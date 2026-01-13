@@ -324,9 +324,10 @@ int main()
     // A: reverse first axis
 
     auto vonA = A.slice_view(
-        Slice(-1, -3, -1), // axis 0 reversed
-        Slice(0, 1),
-        Slice(0, 1));
+                     Slice(-1, -3, -1), // axis 0 reversed
+                     Slice(0, 1),
+                     Slice(0, 1))
+                    .copy();
 
     // B: normal slice (positive)
     auto vonB = B.slice_view(
@@ -383,11 +384,11 @@ int main()
 
     time_block("Massive slice (copy)", [&]()
                {
-        auto big_slice_copy = massive_tensor.slice(
+        auto big_slice_copy = massive_tensor.slice_view(
             Slice(-1, -101, -1),   // reverse first 100
             Slice(0, 200, 2),      // stride
             Slice(10, 40, 1)       // narrow
-        );
+        ).copy();
         volatile int sink = big_slice_copy(0,0,0);
         (void)sink; });
 
@@ -476,4 +477,53 @@ int main()
         (void)sink; });
 
     std::cout << "\n===== STRESS TEST COMPLETE =====\n";
+
+    constexpr size_t X = 256;
+    constexpr size_t Y = 256;
+    constexpr size_t Z = 64;
+    constexpr size_t TOTAL = X * Y * Z;
+
+    std::vector<int> raw(TOTAL);
+    for (size_t i = 0; i < TOTAL; ++i)
+        raw[i] = int(i % 97);
+
+    tensor<int> big(raw, {X, Y, Z});
+
+    std::cout << "Tensor: "
+              << X << " x " << Y << " x " << Z
+              << " (" << TOTAL << " elements)\n";
+
+    // Warm‑up
+    {
+        auto tmp = big.slice_view(
+                          Slice(0, X, 1),
+                          Slice(0, Y, 2),
+                          Slice(1, Z, 3))
+                       .copy();
+        volatile int sink = tmp(0, 0, 0);
+        (void)sink;
+    }
+
+    // Timed
+    time_block("C++ strided slice + copy", [&]()
+               {
+    auto out = big.slice_view(
+        Slice(0, X, 1),   // contiguous
+        Slice(0, Y, 2),   // stride 2
+        Slice(1, Z, 3)    // stride 3  ❗ not contiguous
+    ).copy();
+
+    volatile int sink = out(0,0,0);
+    (void)sink; });
+
+    time_block("C++ strided slice_view ONLY", [&]()
+               {
+    auto view = big.slice_view(
+        Slice(0, X, 1),   // contiguous
+        Slice(0, Y, 2),   // stride 2
+        Slice(1, Z, 3)    // stride 3 (non-contiguous)
+    );
+
+    volatile int sink = view(0, 0, 0);
+    (void)sink; });
 }

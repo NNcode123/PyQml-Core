@@ -112,3 +112,53 @@ time_block("Massive slice_view", lambda: (
         10:40:1
     ]                  # view only
 ))
+
+A = np.arange(200 * 10, dtype=np.int32).reshape(200, 10)
+B = np.arange(150 * 10, dtype=np.int32).reshape(150, 10)
+
+# Warm-up (important for fair timing)
+_ = np.multiply.outer(A, B)
+
+start = time.perf_counter()
+prod = np.multiply.outer(A, B)
+_ = prod[0, 0, 0, 0]   # touch
+end = time.perf_counter()
+
+print("NumPy tensor product time:", end - start)
+print("Result shape:", prod.shape)
+
+X, Y, Z = 256, 256, 64
+TOTAL = X * Y * Z
+
+data = (np.arange(TOTAL, dtype=np.int32) % 97).reshape(X, Y, Z)
+
+print(f"Tensor: {X} x {Y} x {Z} ({TOTAL} elements)")
+
+# Warm‑up
+tmp = data[
+    0:X:1,
+    0:Y:2,
+    1:Z:3
+].copy()
+_ = tmp[0,0,0]
+
+# Timed
+time_block("NumPy strided slice + copy", lambda: (
+    lambda x: x[0,0,0]
+)(
+    data[
+        0:X:1,   # contiguous
+        0:Y:2,   # stride 2
+        1:Z:3    # stride 3  ❗ not contiguous
+    ].copy()
+))
+
+def numpy_slice_view_only():
+    v = data[
+        0:X:1,
+        0:Y:2,
+        1:Z:3
+    ]
+    _ = v[0, 0, 0]
+
+time_block("NumPy strided slice_view ONLY", numpy_slice_view_only)
