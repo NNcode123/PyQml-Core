@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <cstring>
 #include <memory>
+#include <variant>
 
 #pragma once
 
@@ -15,6 +16,22 @@ template <typename T>
 struct typing
 {
     // To be Defined Later....
+};
+
+struct Index
+{
+    int64_t val;
+    inline Index(int64_t vals) : val(vals) {}
+};
+
+struct Range
+{
+    std::vector<int64_t> indices;
+    std::vector<int64_t> differentials;
+    Range(std::vector<int64_t> indc) : indices(indc)
+    {
+        differentials.resize(indices.size() - 1);
+    }
 };
 
 struct Slice
@@ -29,11 +46,34 @@ struct SlicePlan
 {
     std::vector<size_t> dim;
     std::vector<size_t> counts;
+    std::vector<int64_t> strides;
     size_t start_index;
     size_t size;
     SlicePlan(std::vector<size_t> d, std::vector<size_t> cts, size_t s_index, size_t s) : dim(d), counts(cts), start_index(s_index), size(s) {}
     SlicePlan(std::vector<size_t> d, size_t s_idx, size_t s) : dim(d), start_index(s_idx), size(s) {}
+    SlicePlan(std::vector<size_t> d, std::vector<int64_t> stride, size_t s_idx, size_t s) : dim(d), strides(stride), start_index(s_idx), size(s) {}
 };
+
+struct AxisIter
+{
+    size_t count;
+    int64_t advance;
+    int64_t reset_val;
+    std::vector<int64_t> diffs;
+    int64_t next(size_t index)
+    {
+        if (!diffs.empty())
+        {
+
+            return diffs[index];
+        }
+
+        return advance;
+    }
+};
+
+using AxisType = std::variant<Index, Range, Slice>;
+using AxisView = std::variant<Index, Slice>;
 
 template <typename T>
 class tensor
@@ -41,14 +81,7 @@ class tensor
     std::shared_ptr<std::vector<T>> data_;
     std::vector<size_t> dim_;
     std::vector<int64_t> strides_;
-    bool owns_data;
     std::size_t offset;
-    explicit tensor(const std::vector<T> &data, const std::vector<size_t> &dim,
-                    const std::vector<int64_t> &strides, size_t start) : data_(data), dim_(dim), strides_(strides), offset(start)
-    {
-        owns_data = false;
-    }
-
     int64_t getIndex(std::vector<size_t> &cur_counts, size_t start_dim_index,
                      size_t end_dim_index, int64_t cur_pos) const
     {
@@ -64,6 +97,24 @@ class tensor
         }
         cur_counts[index]++;
         cur_pos += strides_[index];
+
+        return cur_pos;
+    }
+    int64_t getIndex(std::vector<AxisIter> &axis_info,
+                     const std::vector<size_t> &new_dim,
+                     size_t start_dim_index,
+                     size_t end_dim_index, int64_t cur_pos) const
+    {
+        int index = end_dim_index;
+        while (index > start_dim_index && new_dim[index] == axis_info[index].count + 1)
+        {
+
+            cur_pos -= axis_info[index].reset_val;
+            axis_info[index].count = 0;
+            index--;
+        }
+        axis_info[index].count++;
+        cur_pos += axis_info[index].next(axis_info[index].count - 1);
 
         return cur_pos;
     }
@@ -115,87 +166,174 @@ public:
         return at(pos);
     }
 
-    SlicePlan analyze_slices(std::vector<Slice> &inds)
+    std::pair<SlicePlan, std::vector<AxisIter>> analyze_slices(const AxisType *inds, const size_t inds_size)
 
     {
-        for (size_t i = inds.size(); i < dim_.size(); i++)
-        {
-            inds.emplace_back(Slice(0, dim_[i]));
-        }
-        std::vector<size_t> new_dim(dim_.size());
-        std::vector<size_t> cur_counts(dim_.size(), 0);
-        size_t new_data_size = 1;
-        size_t cur_index = offset;
-        for (size_t i = 0; i < inds.size(); ++i)
-        {
-            if (inds[i].end < 0 && !(inds[i].step < 0 && inds[i].end == -1))
-            {
-                inds[i].end += dim_[i];
-            }
-            if (inds[i].start < 0)
-            {
-                inds[i].start += dim_[i];
-            }
-            const int64_t span = std::abs(inds[i].end - inds[i].start);
-            const int64_t step = std::abs(inds[i].step);
-            size_t len = span / step + 1;
-            if (span % step == 0)
-            {
-                --len;
-            }
-            new_dim[i] = len;
-            new_data_size *= len;
-            cur_index += inds[i].start * strides_[i];
-        }
-
-        return SlicePlan(new_dim, cur_counts, cur_index, new_data_size);
-    }
-    SlicePlan analyze_slices(const Slice *inds, size_t inds_size)
-    {
+        /*
+         for (size_t i = inds.size(); i < dim_.size(); i++)
+         {
+             inds.emplace_back(Slice(0, dim_[i]));
+         }
+         std::vector<size_t> new_dim(dim_.size());
+         std::vector<size_t> cur_counts(dim_.size(), 0);
+         size_t new_data_size = 1;
+         size_t cur_index = offset;
+         for (size_t i = 0; i < inds.size(); ++i)
+         {
+             if (inds[i].end < 0 && !(inds[i].step < 0 && inds[i].end == -1))
+             {
+                 inds[i].end += dim_[i];
+             }
+             if (inds[i].start < 0)
+             {
+                 inds[i].start += dim_[i];
+             }
+             const int64_t span = std::abs(inds[i].end - inds[i].start);
+             const int64_t step = std::abs(inds[i].step);
+             size_t len = span / step + 1;
+             if (span % step == 0)
+             {
+                 --len;
+             }
+             new_dim[i] = len;
+             new_data_size *= len;
+             cur_index += inds[i].start * strides_[i];
+         }
+        */
         const size_t ndim = dim_.size();
 
-        std::vector<size_t> new_dim(ndim);
+        std::vector<size_t> new_dim;
+
+        std::vector<AxisIter> axis_iter;
         size_t new_data_size = 1;
         size_t cur_index = offset;
 
         for (size_t i = 0; i < ndim; ++i)
         {
-
-            Slice s = (i < inds_size) ? inds[i] : Slice(0, dim_[i], 1);
-
-            if (s.start < 0)
-                s.start += dim_[i];
-            if (s.end < 0 && !(s.step < 0 && s.end == -1))
-                s.end += dim_[i];
-
-            const int64_t span = std::abs(s.end - s.start);
-            const int64_t step = std::abs(s.step);
-
-            size_t len = span / step + 1;
-            if (span % step == 0)
+            AxisIter axis_info;
+            if (i < inds_size)
             {
-                --len;
-            }
+                if (std::holds_alternative<Slice>(inds[i]))
+                {
+                    const Slice &s0 = std::get<Slice>(inds[i]);
+                    Slice s = s0;
+                    if (s.start < 0)
+                        s.start += dim_[i];
+                    if (s.end < 0 && !(s.step < 0 && s.end == -1))
+                        s.end += dim_[i];
 
-            new_dim[i] = len;
-            new_data_size *= len;
-            cur_index += s.start * strides_[i];
+                    const int64_t span = std::abs(s.end - s.start);
+                    const int64_t step = std::abs(s.step);
+
+                    size_t len = span / step + 1;
+                    if (span % step == 0)
+                    {
+                        --len;
+                    }
+
+                    new_dim.push_back(len);
+                    new_data_size *= len;
+                    cur_index += s.start * strides_[i];
+                    axis_info.count = 0;
+                    axis_info.advance = s.step * strides_[i];
+                    axis_info.reset_val = axis_info.advance * (new_dim.back() - 1);
+                    axis_iter.emplace_back(axis_info);
+                }
+                else if (std::holds_alternative<Index>(inds[i]))
+                {
+                    const Index &idx_v = std::get<Index>(inds[i]);
+                    Index idx = idx_v;
+                    if (idx.val < 0)
+                        idx.val += dim_[i];
+                    cur_index += idx.val * strides_[i];
+                }
+                else if (std::holds_alternative<Range>(inds[i]))
+                {
+                    const Range &range_0 = std::get<Range>(inds[i]);
+                    Range range = range_0;
+                    axis_info.count = 0;
+                    for (size_t ind = 1; ind < range.indices.size(); ++ind)
+                    {
+                        range.differentials[ind - 1] = (range.indices[ind] - range.indices[ind - 1]) * strides_[i];
+                    }
+                    axis_info.diffs = std::move(range.differentials);
+                    axis_info.advance = 0;
+                    axis_info.reset_val = (range.indices.back() - range.indices.front()) * strides_[i];
+
+                    axis_iter.emplace_back(axis_info);
+                    new_dim.push_back(range.indices.size());
+                    cur_index += range_0.indices.front() * strides_[i];
+                    new_data_size *= new_dim.back();
+                }
+            }
+            else
+            {
+                new_dim.push_back(dim_[i]);
+            }
         }
 
-        return SlicePlan(new_dim, cur_index, new_data_size);
+        return {SlicePlan(new_dim, cur_index, new_data_size), axis_iter};
+    }
+
+    SlicePlan analyze_slices(const AxisView *inds, size_t inds_size)
+    {
+
+        const size_t ndim = dim_.size();
+
+        std::vector<size_t> new_dim;
+        std::vector<int64_t> new_strides;
+        size_t new_data_size = 1;
+        size_t cur_index = offset;
+
+        for (size_t i = 0; i < ndim; ++i)
+        {
+            if (i < inds_size)
+            {
+                if (std::holds_alternative<Slice>(inds[i]))
+                {
+                    const Slice &s0 = std::get<Slice>(inds[i]);
+                    Slice s = s0;
+                    if (s.start < 0)
+                        s.start += dim_[i];
+                    if (s.end < 0 && !(s.step < 0 && s.end == -1))
+                        s.end += dim_[i];
+
+                    const int64_t span = std::abs(s.end - s.start);
+                    const int64_t step = std::abs(s.step);
+
+                    size_t len = span / step + 1;
+                    if (span % step == 0)
+                    {
+                        --len;
+                    }
+
+                    new_dim.push_back(len);
+                    new_strides.push_back(s.step * strides_[i]);
+                    new_data_size *= len;
+                    cur_index += s.start * strides_[i];
+                }
+                else if (std::holds_alternative<Index>(inds[i]))
+                {
+                    const Index &idx_v = std::get<Index>(inds[i]);
+                    Index idx = idx_v;
+                    if (idx.val < 0)
+                        idx.val += dim_[i];
+                    cur_index += idx.val * strides_[i];
+                }
+            }
+            else
+            {
+                new_dim.push_back(dim_[i]);
+                new_strides.push_back(strides_[i]);
+            }
+        }
+
+        return SlicePlan(new_dim, new_strides, cur_index, new_data_size);
     }
     template <typename... Slices>
     [[nodiscard]] tensor<T> slice(const Slices &...indices)
     {
-
-        std::vector<Slice> inds = {indices...};
-        SlicePlan plan = analyze_slices(inds);
-        std::vector<size_t> cur_counts = plan.counts;
-        std::vector<size_t> new_dim = plan.dim;
-        int64_t cur_index = plan.start_index;
-        size_t new_data_size = plan.size;
-
-        std::vector<T> new_data(new_data_size, 0);
+        /*
         for (size_t i = 0; i < new_data.size(); ++i)
         {
             new_data[i] = (*data_)[cur_index];
@@ -224,8 +362,22 @@ public:
                 cur_index += strides_.back() * inds.back().step;
             }
         }
+            */
+        std::array<AxisType, sizeof...(indices)> inds = {indices...};
+        auto [plan, Axis_Iter] = analyze_slices(inds.data(), inds.size());
+        std::vector<size_t> new_dim = plan.dim;
+        int64_t cur_index = plan.start_index;
+        size_t new_data_size = plan.size;
+        std::vector<T> new_data(new_data_size);
+        for (size_t i = 0; i < new_data_size; ++i)
+        {
+            new_data[i] = (*data_)[cur_index];
 
-        return tensor<T>(std::move(new_data), new_dim);
+            if (i != new_data_size - 1)
+                cur_index = getIndex(Axis_Iter, new_dim, 0, new_dim.size() - 1, cur_index);
+        }
+
+        return tensor<T>(new_data, new_dim);
     }
     template <typename... Slices>
 
@@ -233,15 +385,11 @@ public:
     {
 
         tensor<T> out = *this;
-        std::array<Slice, sizeof...(indices)> inds = {indices...};
+        std::array<AxisView, sizeof...(indices)> inds = {indices...};
         SlicePlan plan = analyze_slices(inds.data(), inds.size());
         out.dim_ = plan.dim;
         out.offset = plan.start_index;
-        for (int i = 0; i < inds.size(); ++i)
-        {
-            if (inds[i].step != 1)
-                out.strides_[i] *= inds[i].step;
-        }
+        out.strides_ = plan.strides;
 
         return out;
     }
@@ -351,17 +499,18 @@ public:
                 const int64_t stride1 = strides_[1];
                 const int64_t stride2 = strides_[2];
                 int64_t start = 0;
-
+#pragma omp parallel for schedule(static)
                 for (size_t ind = 0; ind < dim0_len; ++ind)
                 {
                     const int64_t affine_walk_0 = offset + stride0 * ind;
                     for (size_t j = 0; j < dim1_len; ++j)
                     {
                         const int64_t affine_walk_1 = affine_walk_0 + stride1 * j;
+#pragma omp simd
                         for (size_t k = 0; k < dim2_len; ++k)
                         {
-                            const int64_t pos = affine_walk_1 + stride2 * k;
-                            data[start++] = src[pos];
+
+                            data[start++] = src[affine_walk_1 + stride2 * k];
                         }
                     }
                 }
@@ -401,7 +550,7 @@ public:
             const int64_t stride1 = strides_[1];
             const int64_t stride2 = strides_[2];
             int64_t d_pos = 0;
-
+#pragma omp parallel for schedule(static)
             for (size_t ind = 0; ind < dim0_len; ++ind)
             {
                 const int64_t affine_walk_0 = offset + stride0 * ind;
@@ -428,7 +577,8 @@ public:
                             src + cur_pos,
                             cont_size * sizeof(T));
 
-                cur_pos = getIndex(counts, 0, radix_dim_pos, cur_pos);
+                if (i != radix_size - 1)
+                    cur_pos = getIndex(counts, 0, radix_dim_pos, cur_pos);
             }
         }
 
@@ -466,24 +616,22 @@ public:
         const T *__restrict A_data = A.data_->data();
         const T *__restrict B_data = B.data_->data();
 
-        std::vector<T>
-            new_data;
+        std::vector<T> new_data;
         new_data.resize(this_size * other_size); // avoid zero-fill if not needed
         T *__restrict new_data_ = new_data.data();
-
-        for (size_t i = 0; i < this_size; ++i)
+        for (int64_t i = 0; i < this_size; ++i)
         {
 
             const T a_val = A_data[i];
-            T *__restrict out = new_data_ + i * other_size;
-
-            for (size_t j = 0; j < other_size; ++j)
+            // T *__restrict out = new_data_ + i * other_size;
+            for (int64_t j = 0; j < other_size; ++j)
             {
-                out[j] = a_val * B_data[j];
+                new_data_[j] = a_val * B_data[j];
             }
+            new_data_ += other_size;
         }
 
-        return tensor<T>(new_data, new_dim);
+        return tensor<T>(std::move(new_data), new_dim);
     }
 
     // General tensor contraction over arbitrary axes
@@ -491,10 +639,7 @@ public:
 
     tensor<T> &matrixPow(const size_t &val);
     tensor<T> &elemPow(const size_t &val);
-    tensor<T> &operator+(tensor<T> &tens)
-    {
-        return tensor<T>();
-    }
+    tensor<T> &operator+(tensor<T> &tens);
 
     friend std::ostream &operator<<(std::ostream &out, const tensor<T> &tensor)
     {
@@ -524,25 +669,21 @@ void printTens(std::ostream &out, tensor<T> tensor, int64_t start, size_t depth 
     {
         int dir = 1;
         int64_t cur_stride = stride[depth - 1];
-        if (cur_stride < 0)
-        {
-            dir *= -1;
-        }
-
-        for (size_t times = 0; times < dim[depth - 1]; times++)
+        int64_t last_dim = dim[depth - 1];
+        out << "[";
+        for (size_t times = 0; times < last_dim; times++)
         {
 
             out << std::setw(width) << data[start] << " ";
-            start += dir;
+            start += cur_stride;
         }
+        out << "]";
         return;
     }
 
     int64_t cur_stride = stride[depth - 1];
     size_t num_sub_tensors = dim[depth - 1];
-
-    if (depth == 1)
-        out << "[";
+    out << "[";
     for (int64_t i = 0; i < num_sub_tensors; i++)
     {
         if (i > 0)
@@ -552,19 +693,10 @@ void printTens(std::ostream &out, tensor<T> tensor, int64_t start, size_t depth 
                 out << " ";
             }
         }
-        out << "[";
+
         printTens(out, tensor, start + i * cur_stride, depth + 1);
         if (i != num_sub_tensors - 1)
-        {
-            out << "]\n";
-            if (depth >= 1 && depth < dim.size())
-                out << "\n";
-        }
-        else
-        {
-            out << "]";
-        }
+            out << "\n\n";
     }
-    if (depth == 1)
-        out << "]";
+    out << "]";
 }

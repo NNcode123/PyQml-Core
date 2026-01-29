@@ -53,6 +53,7 @@ T = time_block("Triple tensor product (NumPy)", triple_tensor_product)
 # Touch one element so Python can't optimize it away
 print("Sample:", T[0, 0, 0, 0, 0, 0])
 
+"""
 D0 = 200
 D1 = 200
 D2 = 50
@@ -147,18 +148,70 @@ time_block("NumPy strided slice + copy", lambda: (
     lambda x: x[0,0,0]
 )(
     data[
-        0:X:1,   # contiguous
-        0:Y:2,   # stride 2
+        0:X:2,   # contiguous
+        0:Y:4,   # stride 2
         1:Z:3    # stride 3  ❗ not contiguous
     ].copy()
 ))
 
 def numpy_slice_view_only():
     v = data[
-        0:X:1,
+        0:X:2,
         0:Y:2,
         1:Z:3
     ]
     _ = v[0, 0, 0]
 
 time_block("NumPy strided slice_view ONLY", numpy_slice_view_only)
+"""
+D0 = 160
+D1 = 200
+D2 = 100
+D3 = 8
+
+TOTAL_ELEMS = D0 * D1 * D2 * D3
+
+base_data = (np.arange(TOTAL_ELEMS, dtype=np.int32) % 113)
+np_tensor = base_data.reshape(D0, D1, D2, D3)
+
+print(f"Base NumPy tensor: {D0} x {D1} x {D2} x {D3} ({TOTAL_ELEMS} elements)")
+
+# ============================================================
+# Axis 0: RANDOM DISTINCT GATHER [0, 50]
+# ============================================================
+
+rng = np.random.default_rng(123)
+axis0_indices = np.arange(51)
+rng.shuffle(axis0_indices)
+axis0_indices = axis0_indices[:50]     # distinct, unordered
+
+# ============================================================
+# Single pathological slice
+# ============================================================
+# Axis 0: advanced indexing (non-affine gather)
+# Axis 1: negative-stride slice
+# Axis 2: index (dimension drop)
+# Axis 3: strided slice
+#
+# Expected output size:
+#   50 * 100 * 4 = 20,000 elements
+
+def numpy_pathological_slice():
+    out = np_tensor[
+        axis0_indices,        # axis 0 (gather)
+        -1:-201:-2,           # axis 1 (negative stride)
+        axis0_indices,     # axis 2 (index → drop dim)
+        0:8:2                 # axis 3
+    ]
+    # touch one element so it can't be optimized away
+    _ = out[0, 0, 0]
+    return out
+
+result = time_block(
+    "NumPy single pathological slice (gather + slice + index)",
+    numpy_pathological_slice
+)
+
+print("Output shape:", result.shape)
+print("Output size:", result.size)
+print("Contiguous?", result.flags['C_CONTIGUOUS'])

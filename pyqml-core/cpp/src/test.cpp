@@ -3,6 +3,9 @@
 #include <vector>
 #include <complex.h>
 #include <chrono>
+#include <numeric>   // std::iota
+#include <algorithm> // std::shuffle
+#include <random>
 
 template <typename F>
 void time_block(const std::string &name, F &&fn)
@@ -303,6 +306,7 @@ int main()
      std::cout << "C = vA tensor_prod vB:\n";
      std::cout << C << "\n";
      */
+    /*
     std::vector<int> dataA = {1, 2};
     std::vector<int> dataB = {3, 4};
     std::vector<int> dataC = {5, 6};
@@ -508,8 +512,8 @@ int main()
     time_block("C++ strided slice + copy", [&]()
                {
     auto out = big.slice_view(
-        Slice(0, X, 1),   // contiguous
-        Slice(0, Y, 2),   // stride 2
+        Slice(0, X, 2),   // contiguous
+        Slice(0, Y, 4),   // stride 2
         Slice(1, Z, 3)    // stride 3  ❗ not contiguous
     ).copy();
 
@@ -519,11 +523,238 @@ int main()
     time_block("C++ strided slice_view ONLY", [&]()
                {
     auto view = big.slice_view(
-        Slice(0, X, 1),   // contiguous
-        Slice(0, Y, 2),   // stride 2
+        Slice(0, X, 2),   // contiguous
+        Slice(0, Y, 4),   // stride 2
         Slice(1, Z, 3)    // stride 3 (non-contiguous)
     );
 
     volatile int sink = view(0, 0, 0);
     (void)sink; });
+    */
+
+    /*
+     std::vector<int> data(200);
+     for (int i = 0; i < 200; ++i)
+         data[i] = i;
+
+     tensor<int> T(data, {5, 4, 5, 2});
+
+     std::cout << "Original tensor T (5,4,5,2):\n";
+     std::cout << T << "\n\n";
+
+     auto V = T.slice_view(
+         Index(3),   // axis 0 → keep
+         Index(2),   // axis 1 → REMOVE
+         Index(4),   // axis 2 → keep
+         Slice(0, 2) // axis 3 → REMOVE
+     );
+
+     std::cout << "View V (after 2 Index reductions):\n";
+     std::cout << V << "\n\n";
+     */
+    std::vector<size_t> shape = {5, 5, 4, 2};
+
+    std::vector<int> data(200);
+    for (int i = 0; i < 200; ++i)
+        data[i] = i;
+
+    tensor<int> t(data, shape);
+
+    std::cout << "Original tensor shape: ";
+    for (auto d : t.shape())
+        std::cout << d << " ";
+    std::cout << "\n\n";
+
+    // ---- 2. Construct a *pathological* slicing pattern ----
+    //
+    // Axis 0: Range (non-affine, irregular)
+    // Axis 1: Slice (non-unit stride)
+    // Axis 2: Index (dimension reduction)
+    // Axis 3: Range (non-affine, irregular)
+    //
+    // IMPORTANT: all Range indices are positive
+
+    Range r0({0, 4, 2}); // irregular gather on axis 0
+    Slice s1(1, 5, 2);   // slice [1:5:2] on axis 1
+    Index i2(2);         // fix axis 2
+    Range r3({1, 0});    // trivial but still Range on axis 3
+
+    // ---- 3. Apply slice (forces general / radix path) ----
+    auto out = t.slice(r0, s1, i2, r3);
+
+    // ---- 4. Print result ----
+    std::cout << "Sliced tensor shape: ";
+    for (auto d : out.shape())
+        std::cout << d << " ";
+    std::cout << "\n\n";
+
+    std::cout << "Sliced tensor contents:\n";
+    std::cout << out << "\n";
+    constexpr size_t D0 = 128;
+    constexpr size_t D1 = 192;
+    constexpr size_t D2 = 64;
+    constexpr size_t D3 = 32;
+
+    constexpr size_t TOTAL = D0 * D1 * D2 * D3;
+
+    // ---- Raw data ----
+    std::vector<int> raw_big(TOTAL);
+    for (size_t i = 0; i < TOTAL; ++i)
+        raw_big[i] = int(i % 251);
+
+    tensor<int> giant(raw_big, {D0, D1, D2, D3});
+
+    std::cout << "Giant tensor shape: "
+              << D0 << " x " << D1 << " x "
+              << D2 << " x " << D3
+              << " (" << TOTAL << " elements)\n";
+
+    // ========================================================
+    // Warm‑up (important for cache + branch predictor)
+    // ========================================================
+    {
+        auto warm = giant.slice_view(
+                             Slice(0, D0, 1),
+                             Slice(0, D1, 2),
+                             Slice(0, D2, 3),
+                             Slice(0, D3, 4))
+                        .copy();
+
+        volatile int sink = warm(0, 0, 0, 0);
+        (void)sink;
+    }
+
+    // ========================================================
+    // Pathological axis definitions
+    //  - Ranges are POSITIVE ONLY
+    //  - Slices may be negative
+    //  - Index may be negative
+    // ========================================================
+    /*
+    Range rg0({0, 7, 3, 11, 2, 19}); // irregular gather
+    Slice sl1(-1, -150, -2);         // reversed, strided
+    Index ix2(-3);                   // negative index
+    Range rg3({1, 4, 0, 7, 2});      // irregular gather
+
+    // ========================================================
+    // 1. Full pathological slice → view → slice chain
+    // ========================================================
+
+    time_block("4D pathological slice chain", [&]()
+               {
+
+        auto view0 = giant.slice(
+            rg0,
+            sl1,
+            ix2,
+            rg3
+        );
+
+        auto copy1 = view0.slice(
+            Slice(0, 10),
+            Slice(-1, -20, -1),
+            Range({0, 2, 1, 3}),
+            Slice(0, 5)
+        );
+
+
+        volatile int sink = copy1(0, 0, 0, 0);
+        (void)sink; });
+    */
+
+    // ========================================================
+    // 2. Same pathological slice — COPY
+    // ========================================================
+    /*
+       time_block("4D pathological slice (copy)", [&]()
+                  {
+
+           auto out = giant.slice(
+               rg0,
+               sl1,
+               ix2,
+               rg3
+           );
+
+           volatile int sink = out(0, 0, 0);
+           (void)sink; });
+
+       // ========================================================
+       // 3. Same pathological slice — VIEW
+       // ========================================================
+
+       time_block("4D pathological slice (view)", [&]()
+                  {
+
+           auto out = giant.slice(
+               rg0,
+               sl1,
+               ix2,
+               rg3
+           );
+
+           volatile int sink = out(0, 0, 0);
+           (void)sink; });
+
+       std::cout << "\n===== 4D PATHOLOGICAL STRESS TEST COMPLETE =====\n";
+       */
+    constexpr size_t A = 160;
+    constexpr size_t B = 200;
+    constexpr size_t C = 100;
+    constexpr size_t D = 8;
+
+    constexpr size_t TOTA = A * B * C * D;
+
+    std::vector<int> raw_path(TOTA);
+    for (size_t i = 0; i < TOTA; ++i)
+        raw_path[i] = int(i % 113);
+
+    tensor<int> pathological(raw_path, {A, B, C, D});
+
+    std::cout << "Base tensor shape: "
+              << A << " x " << B << " x "
+              << C << " x " << D
+              << " (" << TOTAL << " elements)\n";
+
+    // ========================================================
+    // Axis 0: RANDOM DISTINCT Range in [0, 50]
+    // ========================================================
+
+    std::vector<int64_t> gather0;
+    gather0.reserve(50);
+
+    std::vector<int64_t> pool(51);
+    std::iota(pool.begin(), pool.end(), 0);
+
+    Range rg0(pool);         // size = 50
+    Slice sl1(-1, -201, -2); // size = 100
+    Range rg1(pool);         // drop axis
+    Slice sl3(0, 8, 2);      // size = 4
+
+    // ========================================================
+    // Execute single pathological slice
+    // ========================================================
+
+    time_block("Single pathological slice (~2M elems, random gather)", [&]()
+               {
+
+        auto out = pathological.slice(
+            rg0,   // axis 0 (random non‑affine)
+            sl1,   // axis 1
+            rg1,   // axis 2 (drops)
+            sl3    // axis 3
+        );
+
+        const auto &sh = out.shape();
+        std::cout << "Output shape: ";
+        for (auto d : sh)
+            std::cout << d << " ";
+        std::cout << "\n";
+
+        volatile int sink = out(0, 0, 0, 0);
+        (void)sink; });
+
+    std::cout << "===== RANDOM‑GATHER PATHOLOGICAL TEST DONE =====\n";
+
+    return 0;
 }
