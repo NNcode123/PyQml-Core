@@ -590,6 +590,7 @@ int main()
 
     std::cout << "Sliced tensor contents:\n";
     std::cout << out << "\n";
+    /*
     constexpr size_t D0 = 128;
     constexpr size_t D1 = 192;
     constexpr size_t D2 = 64;
@@ -698,63 +699,192 @@ int main()
 
        std::cout << "\n===== 4D PATHOLOGICAL STRESS TEST COMPLETE =====\n";
        */
-    constexpr size_t A = 160;
-    constexpr size_t B = 200;
-    constexpr size_t C = 100;
-    constexpr size_t D = 8;
 
-    constexpr size_t TOTA = A * B * C * D;
+    // ============================================================
+    // 1. Massive Base Tensor (≈ 2 million elements)
+    // ============================================================
+    // ============================================================
+    // 1. Massive Base Tensor (≈ 2 million elements)
+    // ============================================================
 
-    std::vector<int> raw_path(TOTA);
-    for (size_t i = 0; i < TOTA; ++i)
-        raw_path[i] = int(i % 113);
+    constexpr size_t D0 = 200;
+    constexpr size_t D1 = 200;
+    constexpr size_t D2 = 50;
+    constexpr size_t TOTAL_SIZE = D0 * D1 * D2;
 
-    tensor<int> pathological(raw_path, {A, B, C, D});
+    std::vector<int32_t> massive_data(TOTAL_SIZE);
+    for (size_t i = 0; i < TOTAL_SIZE; ++i)
+        massive_data[i] = static_cast<int32_t>(i % 97);
 
-    std::cout << "Base tensor shape: "
-              << A << " x " << B << " x "
-              << C << " x " << D
-              << " (" << TOTAL << " elements)\n";
+    std::vector<size_t> massive_dims = {D0, D1, D2};
 
-    // ========================================================
-    // Axis 0: RANDOM DISTINCT Range in [0, 50]
-    // ========================================================
+    tensor<int32_t> massive_tensor(massive_data, massive_dims);
 
-    std::vector<int64_t> gather0;
-    gather0.reserve(50);
+    std::cout << "Massive tensor created: "
+              << D0 << " x " << D1 << " x " << D2
+              << " (" << TOTAL_SIZE << " elements)\n\n";
 
-    std::vector<int64_t> pool(51);
-    std::iota(pool.begin(), pool.end(), 0);
+    // ============================================================
+    // 2. Massive SLICE (deep copy)
+    // ============================================================
 
-    Range rg0(pool);         // size = 50
-    Slice sl1(-1, -201, -2); // size = 100
-    Range rg1(pool);         // drop axis
-    Slice sl3(0, 8, 2);      // size = 4
-
-    // ========================================================
-    // Execute single pathological slice
-    // ========================================================
-
-    time_block("Single pathological slice (~2M elems, random gather)", [&]()
+    time_block("Massive slice (copy)", [&]()
                {
-
-        auto out = pathological.slice(
-            rg0,   // axis 0 (random non‑affine)
-            sl1,   // axis 1
-            rg1,   // axis 2 (drops)
-            sl3    // axis 3
-        );
-
-        const auto &sh = out.shape();
-        std::cout << "Output shape: ";
-        for (auto d : sh)
-            std::cout << d << " ";
-        std::cout << "\n";
-
-        volatile int sink = out(0, 0, 0, 0);
+        tensor<int32_t> big_slice_copy = massive_tensor.slice_view(
+            Slice(-1, -101, -1),   // reverse first 100
+            Slice(0, 200, 2),      // stride
+            Slice(10, 40, 1)       // narrow
+        ).copy();
+        volatile int sink = big_slice_copy(0,0,0);
         (void)sink; });
 
-    std::cout << "===== RANDOM‑GATHER PATHOLOGICAL TEST DONE =====\n";
+    // ============================================================
+    // 3. Massive SLICE_VIEW (no copy)
+    // ============================================================
 
-    return 0;
+    time_block("Massive slice_view", [&]()
+               {
+        auto big_slice_view = massive_tensor.slice_view(
+            Slice(-1, -101, -1),
+            Slice(0, 200, 2),
+            Slice(10, 40, 1)
+        );
+        volatile int sink = big_slice_view(0,0,0);
+        (void)sink; });
+
+    // ============================================================
+    // 4. Repeated View → Copy → View Chain (worst traversal)
+    // ============================================================
+
+    time_block("Repeated view/copy chaining", [&]()
+               {
+
+        tensor<int32_t> v1 = massive_tensor.slice_view(
+            Slice(-1, -151, -1),
+            Slice(0, 200, 3),
+            Slice(0, 50)
+        );
+
+        tensor<int32_t> c2 = v1.slice_view(
+            Slice(10, 80),
+            Slice(-1, -40, -2),
+            Slice(5, 30)
+        ).copy();
+
+        tensor<int32_t> v3 = c2.slice_view(
+            Slice(-1, -20, -1),
+            Slice(0, 10),
+            Slice(-1, -10, -1)
+        );
+
+        volatile int sink = v3(0,0,0);
+        (void)sink; });
+
+    std::vector<size_t> dims = {1000, 1000};
+    std::vector<size_t> dims2 = {1, 1000};
+    size_t total_size = 1000 * 1000;
+    size_t total_size2 = 1 * 1000;
+
+    // fill large data arrays
+    std::vector<double> data_a(total_size);
+    std::vector<double> data_b(total_size2);
+
+    // initialize with some values
+    std::iota(data_a.begin(), data_a.end(), 0.0);    // 0,1,2,...
+    std::iota(data_b.begin(), data_b.end(), 1000.0); // 1000,1001,...
+
+    // create tensors
+    tensor<double> a(data_a, dims);
+    tensor<double> b(data_b, dims);
+
+    // add
+    // tensor<double> C = a + b;
+    // std::cout << C;
+    constexpr size_t BA = 512;
+    constexpr size_t BB = 256;
+    constexpr size_t BC = 64;
+
+    constexpr size_t TOTAL_A = BA * BB * BC;
+
+    // ---- Tensor A (512 x 256 x 64)
+    std::vector<int_fast32_t> dataA(TOTAL_A);
+    for (size_t i = 0; i < TOTAL_A; ++i)
+        dataA[i] = int_fast32_t(i % 113);
+
+    tensor<int_fast32_t> A(dataA, {BA, BB, BC});
+
+    // ---- Tensor B (1 x 256 x 1)  -> broadcastable
+    std::vector<int_fast32_t> dataB(BB);
+    for (size_t i = 0; i < BB; ++i)
+        dataB[i] = int_fast32_t(i % 17);
+
+    tensor<int_fast32_t> B(dataB, {1, BB, 1});
+
+    std::cout << "Broadcast test shapes:\n";
+    std::cout << "A: 512 x 256 x 64\n";
+    std::cout << "B: 1 x 256 x 1\n\n";
+
+    // ---- Warm‑up
+    {
+        auto tmp = A + B;
+        volatile int sink = tmp(0, 0, 0);
+        (void)sink;
+    }
+
+    // ---- Timed
+    time_block("Broadcast add (512x256x64) + (1x256x1)", [&]()
+               {
+    auto C = A + B - A*B +A*B*B;// - A/B*(A+B);
+    volatile int sink = C(0,0,0);
+    (void)sink; });
+
+    std::vector<double> data_big_A(40 * 10 * 4);
+    for (size_t i = 0; i < data_big_A.size(); ++i)
+        data_big_A[i] = i % 10;
+
+    tensor<double> bigA(data_big_A, {10, 40, 4});
+
+    // ---- Base tensor for B
+    std::vector<double> data_big_B(40 * 20);
+    for (size_t i = 0; i < data_big_B.size(); ++i)
+        data_big_B[i] = i % 10;
+
+    tensor<double> bigB(data_big_B, {40, 10, 2});
+
+    // ============================================================
+    // Create slice_views
+    // ============================================================
+
+    // A slice → (2,5,4,2)
+    auto A_V = bigA.slice_view(
+        Slice(0, 1),   // 1
+        Slice(20, 25), // 5
+        Slice(0, 2)    // 2
+    );
+
+    // B slice → (2,5)
+    auto B_V = bigB.slice_view(
+        Slice(10, 15), // 5
+        Slice(2, 3),   // 1
+        Slice(0, 2)    // 2
+    );
+
+    std::cout << "Shapes:\n";
+    std::cout << "A: (2,5,4,2)\n";
+    std::cout << "B: (2,5)\n\n";
+
+    // ============================================================
+    // Broadcast add
+    // ============================================================
+
+    auto C_V = A_V + B_V;
+    auto D_V = (A_V * B_V);
+    auto E_V = C_V - D_V;
+
+    std::cout << "Result tensor:\n";
+    std::cout << A_V << "\n\n";
+    std::cout << B_V << "\n\n";
+    std::cout << "C_V" << C_V << "\n\n";
+    std::cout << "D_V" << D_V << "\n\n";
+    std::cout << "E_V" << E_V << "\n\n";
 }

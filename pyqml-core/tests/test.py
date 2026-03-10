@@ -1,4 +1,11 @@
+
 import numpy as np
+#np.__config__.show()
+
+import threadpoolctl
+threadpoolctl.threadpool_info()
+
+
 
 import time
 
@@ -8,6 +15,9 @@ def time_block(name, fn):
     t1 = time.perf_counter()
     print(f"{name}: {t1 - t0:.6f} sec")
     return out
+
+
+
 
 
 # -------------------------------
@@ -53,7 +63,7 @@ T = time_block("Triple tensor product (NumPy)", triple_tensor_product)
 # Touch one element so Python can't optimize it away
 print("Sample:", T[0, 0, 0, 0, 0, 0])
 
-"""
+
 D0 = 200
 D1 = 200
 D2 = 50
@@ -135,6 +145,8 @@ data = (np.arange(TOTAL, dtype=np.int32) % 97).reshape(X, Y, Z)
 
 print(f"Tensor: {X} x {Y} x {Z} ({TOTAL} elements)")
 
+np.show_config()
+
 # Warm‑up
 tmp = data[
     0:X:1,
@@ -163,6 +175,9 @@ def numpy_slice_view_only():
     _ = v[0, 0, 0]
 
 time_block("NumPy strided slice_view ONLY", numpy_slice_view_only)
+
+
+
 """
 D0 = 160
 D1 = 200
@@ -215,3 +230,55 @@ result = time_block(
 print("Output shape:", result.shape)
 print("Output size:", result.size)
 print("Contiguous?", result.flags['C_CONTIGUOUS'])
+
+A = np.arange(2000, dtype=np.int32).reshape(200, 10) % 11
+B = np.arange(1500, dtype=np.int32).reshape(150, 10) % 13
+
+def time_block(name, fn):
+    t0 = time.perf_counter()
+    fn()
+    t1 = time.perf_counter()
+    print(f"{name}: {(t1 - t0)*1000:.2f} ms")
+
+time_block("Tensor product", lambda: A[:, None, :, None] * B[None, :, None, :])
+
+# Triple product
+C = np.arange(500, dtype=np.int32).reshape(50, 10) % 7
+time_block(
+    "Triple tensor product",
+    lambda: A[:,None,:,None,None,None]
+          * B[None,:,None,:,None,None]
+          * C[None,None,None,None,:,:]
+)
+"""
+
+X = 512
+Y = 256
+Z = 64
+
+# -----------------------------
+# Create tensors
+# -----------------------------
+A = np.arange(X * Y * Z, dtype=int).reshape(X, Y, Z) % 97
+B = np.arange(Y, dtype=int).reshape(1, Y, 1) % 31
+
+print("Shapes:")
+print("A:", A.shape)
+print("B:", B.shape)
+print()
+
+# -----------------------------
+# Warm-up (important!)
+# -----------------------------
+_ = A + B
+
+# -----------------------------
+# Timed broadcast add
+# -----------------------------
+C = time_block(
+    "Broadcast add (512x256x64) + (1x256x1)",
+    lambda: A + B - A*B +(A*B*B)
+)
+
+# Force usage so it isn't optimized away
+_ = C[0,0,0]
