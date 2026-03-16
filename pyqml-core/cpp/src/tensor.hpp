@@ -49,15 +49,17 @@ struct SlicePlan
     std::vector<int64_t> strides;
     size_t start_index;
     size_t size;
+
     SlicePlan(std::vector<size_t> d, std::vector<size_t> cts, size_t s_index, size_t s) : dim(d), counts(cts), start_index(s_index), size(s) {}
     SlicePlan(std::vector<size_t> d, size_t s_idx, size_t s) : dim(d), start_index(s_idx), size(s) {}
     SlicePlan(std::vector<size_t> d, std::vector<int64_t> stride, size_t s_idx, size_t s) : dim(d), strides(stride), start_index(s_idx), size(s) {}
+    SlicePlan(std::vector<size_t> &&d, std::vector<int64_t> &&s, size_t s_idx) : dim(std::move(d)), strides(std::move(s)), start_index(s_idx) {}
 };
 
 struct AxisIter
 {
     std::vector<int64_t> diffs;
-    size_t count = 0;
+    size_t count = 1;
     size_t dim = 0;
     int64_t advance = 0;
     int64_t reset_val = 0;
@@ -81,9 +83,11 @@ template <typename T>
 class tensor
 {
     static constexpr size_t NDIM = 8;
-    size_t dim_stack[NDIM];
-    int64_t strides_stack[NDIM];
-    std::shared_ptr<std::vector<T>> data_;
+    // size_t dim_stack[NDIM];
+    // int64_t strides_stack[NDIM];
+    // std::shared_ptr<std::vector<T>> data_;
+    std::shared_ptr<T[]> data_;
+    size_t t_size;
     std::vector<size_t> dim_;
     std::vector<int64_t> strides_;
     std::size_t offset;
@@ -106,7 +110,7 @@ class tensor
 
             cur_pos -= cur_counts[end_dim_index] * strides_[end_dim_index];
 
-            cur_counts[end_dim_index] = 0;
+            cur_counts[end_dim_index] = 1;
 
             if (end_dim_index == start_dim_index)
             {
@@ -120,12 +124,12 @@ class tensor
 
         return cur_pos;
     }
-    inline void getIndex(AxisIter *axis_info, size_t start_dim, size_t end_dim, const T *src) const
+    inline void getIndex(AxisIter *axis_info, size_t start_dim, size_t end_dim, const T *__restrict &src) const
     {
         while (axis_info[end_dim].count == axis_info[end_dim].dim)
         {
             src -= axis_info[end_dim].reset_val;
-            axis_info[end_dim].count = 0;
+            axis_info[end_dim].count = 1;
             if (end_dim == start_dim)
             {
                 return;
@@ -144,14 +148,16 @@ class tensor
         {
 
             cur_pos -= axis_info[end_index].reset_val;
-            axis_info[end_index].count = 0;
+            axis_info[end_index].count = 1;
+
             if (end_index == start_index)
             {
                 return cur_pos;
             }
             end_index--;
         }
-        cur_pos += axis_info[end_index].next(axis_info[end_index].count);
+
+        cur_pos += axis_info[end_index].next(axis_info[end_index].count - 1);
         axis_info[end_index].count++;
 
         return cur_pos;
@@ -165,7 +171,7 @@ class tensor
         while (index >= start_index && cur_counts[index] + 1 == dim_[index])
         {
             cur_pos -= new_strides[index] * cur_counts[index];
-            cur_counts[index] = 0;
+            cur_counts[index] = 1;
             if (index == start_index)
                 return;
             --index;
@@ -177,15 +183,15 @@ class tensor
         // return cur_pos;
     }
 
-    inline void getIndex(AxisIter *axes_a, AxisIter *axes_b, size_t start_index, size_t end_index, int64_t &a_cur_pos, int64_t &b_cur_pos)
+    void getIndex(AxisIter *axes_a, AxisIter *axes_b, size_t start_index, size_t end_index, const T *__restrict &a_data, const T *__restrict &b_data) const
     {
 
         while (axes_a[end_index].count == axes_a[end_index].dim)
         {
-            a_cur_pos -= axes_a[end_index].reset_val;
-            b_cur_pos -= axes_b[end_index].reset_val;
-            axes_a[end_index].count = 0;
-            axes_b[end_index].count = 0;
+            a_data -= axes_a[end_index].reset_val;
+            b_data -= axes_b[end_index].reset_val;
+            axes_a[end_index].count = 1;
+            axes_b[end_index].count = 1;
             if (end_index == start_index)
             {
                 return;
@@ -194,16 +200,32 @@ class tensor
         }
         axes_a[end_index].count++;
         axes_b[end_index].count++;
-        a_cur_pos += axes_a[end_index].advance;
-        b_cur_pos += axes_b[end_index].advance;
+
+        a_data += axes_a[end_index].advance;
+        b_data += axes_b[end_index].advance;
     }
 
 public:
     explicit tensor() : data_(nullptr), dim_({}) {}
-    explicit tensor(const std::vector<T> &data, const std::vector<size_t> &dim) : data_(std::make_shared<std::vector<T>>(data)), dim_(dim)
+    /*
+    explicit tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : data_(std::make_shared<std::vector<T>>(std::move(data))), dim_(dim)
 
     {
-
+        strides_.resize(dim_.size());
+        offset = 0;
+        for (size_t i = 0; i < strides_.size(); ++i)
+        {
+            int64_t cur_stride = 1;
+            for (size_t j = i + 1; j < strides_.size(); ++j)
+            {
+                cur_stride *= dim_[j];
+            }
+            strides_[i] = cur_stride;
+        }
+    }
+        */
+    explicit tensor(std::shared_ptr<T[]> data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim)
+    {
         strides_.resize(dim_.size());
         offset = 0;
         for (size_t i = 0; i < strides_.size(); ++i)
@@ -224,9 +246,20 @@ public:
             size *= val;
         return size;
     }
-    [[nodiscard]] std::vector<size_t> dim() const { return dim_; }
-    [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
-    [[nodiscard]] std::vector<T> data() const { return *data_; }
+    [[nodiscard]] std::vector<size_t> dim() const
+    {
+        return dim_;
+    }
+    [[nodiscard]] std::vector<int64_t> strides() const
+    {
+        return strides_;
+    }
+
+    [[nodiscard]] T *data() const // std::vector<T>
+    {
+        return data_.get();
+    }
+
     [[nodiscard]] T at(const std::vector<size_t> &pos) const
     {
         size_t index, s_index;
@@ -237,7 +270,8 @@ public:
             index += pos[s_index] * stride;
             s_index++;
         }
-        return (*data_)[index];
+        // return (*data_)[index];
+        return (data_)[index];
     }
     template <typename... Indices>
     [[nodiscard]] T operator()(Indices... indices) const
@@ -249,7 +283,6 @@ public:
     std::pair<SlicePlan, std::vector<AxisIter>> analyze_slices(const AxisType *inds, const size_t inds_size)
 
     {
-
         const size_t ndim = dim_.size();
 
         std::vector<size_t> new_dim;
@@ -260,6 +293,7 @@ public:
 
         for (size_t i = 0; i < ndim; ++i)
         {
+
             AxisIter axis_info;
             if (i < inds_size)
             {
@@ -282,11 +316,11 @@ public:
                     }
 
                     new_dim.push_back(len);
-                    new_data_size *= len;
+                    axis_info.dim = len;
+                    new_data_size *= new_dim.back();
                     cur_index += s.start * strides_[i];
-                    axis_info.count = 0;
                     axis_info.advance = s.step * strides_[i];
-                    axis_info.reset_val = axis_info.advance * (new_dim.back() - 1);
+                    axis_info.reset_val = axis_info.advance * (len - 1);
                     axis_iter.emplace_back(axis_info);
                 }
                 else if (std::holds_alternative<Index>(inds[i]))
@@ -301,24 +335,28 @@ public:
                 {
                     const Range &range_0 = std::get<Range>(inds[i]);
                     Range range = range_0;
-                    axis_info.count = 0;
-                    for (size_t ind = 1; ind < range.indices.size(); ++ind)
+                    for (size_t ind = 0; ind + 1 < range.indices.size(); ++ind)
                     {
-                        range.differentials[ind - 1] = (range.indices[ind] - range.indices[ind - 1]) * strides_[i];
+                        range.differentials[ind] = (range.indices[ind + 1] - range.indices[ind]) * strides_[i];
                     }
                     axis_info.diffs = std::move(range.differentials);
-                    axis_info.advance = 0;
                     axis_info.reset_val = (range.indices.back() - range.indices.front()) * strides_[i];
-
+                    axis_info.dim = range.indices.size();
                     axis_iter.emplace_back(axis_info);
                     new_dim.push_back(range.indices.size());
-                    cur_index += range_0.indices.front() * strides_[i];
+                    cur_index += range.indices.front() * strides_[i];
                     new_data_size *= new_dim.back();
                 }
             }
             else
             {
+
+                axis_info.advance = strides_[i];
+                axis_info.reset_val = (dim_[i] - 1) * strides_[i];
+                axis_info.dim = dim_[i];
+                axis_iter.emplace_back(axis_info);
                 new_dim.push_back(dim_[i]);
+                new_data_size *= dim_[i];
             }
         }
 
@@ -327,12 +365,12 @@ public:
 
     SlicePlan analyze_slices(const AxisView *inds, size_t inds_size)
     {
-
         const size_t ndim = dim_.size();
 
         std::vector<size_t> new_dim;
+        new_dim.reserve(ndim);
         std::vector<int64_t> new_strides;
-        size_t new_data_size = 1;
+        new_strides.reserve(ndim);
         size_t cur_index = offset;
 
         for (size_t i = 0; i < ndim; ++i)
@@ -359,7 +397,6 @@ public:
 
                     new_dim.push_back(len);
                     new_strides.push_back(s.step * strides_[i]);
-                    new_data_size *= len;
                     cur_index += s.start * strides_[i];
                 }
                 else if (std::holds_alternative<Index>(inds[i]))
@@ -378,41 +415,42 @@ public:
             }
         }
 
-        return SlicePlan(new_dim, new_strides, cur_index, new_data_size);
+        return SlicePlan(std::move(new_dim), std::move(new_strides), cur_index);
     }
     template <typename... Slices>
     [[nodiscard]] tensor<T> slice(const Slices &...indices)
     {
-
         std::array<AxisType, sizeof...(indices)> inds = {indices...};
         auto [plan, Axis_Iter] = analyze_slices(inds.data(), inds.size());
-        std::vector<size_t> new_dim = plan.dim;
-        int64_t cur_index = plan.start_index;
-        size_t new_data_size = plan.size;
-        std::vector<T> new_data(new_data_size);
-        const T *__restrict data_ptr = data_->data();
+        std::vector<size_t> new_dim = std::move(plan.dim);
+        int64_t cur_index = std::move(plan.start_index);
+        size_t new_data_size = std::move(plan.size);
+        // std::vector<T> new_data(new_data_size);
+        // const T *__restrict data_ptr = data_->data();
+        std::shared_ptr<T[]> new_data(new T[new_data_size], std::default_delete<T[]>());
+        const T *__restrict data_ptr = new_data.get();
 
         for (size_t i = 0; i < new_data_size; ++i)
         {
             new_data[i] = data_ptr[cur_index];
 
-            if (i != new_data_size - 1)
-                cur_index = getIndex(Axis_Iter, new_dim, 0, new_dim.size() - 1, cur_index);
+            cur_index = getIndex(Axis_Iter, new_dim, 0, new_dim.size() - 1, cur_index);
         }
 
-        return tensor<T>(new_data, new_dim);
+        // return tensor<T>(std::move(new_data), new_dim);
+        return tensor<T>(new_data, new_data_size, new_dim);
     }
     template <typename... Slices>
 
     [[nodiscard]] tensor<T> slice_view(const Slices &...indices)
     {
-
-        tensor<T> out = *this;
+        tensor<T> out;
         std::array<AxisView, sizeof...(indices)> inds = {indices...};
         SlicePlan plan = analyze_slices(inds.data(), inds.size());
-        out.dim_ = plan.dim;
+        out.data_ = data_;
+        out.dim_ = std::move(plan.dim);
         out.offset = plan.start_index;
-        out.strides_ = plan.strides;
+        out.strides_ = std::move(plan.strides);
 
         return out;
     }
@@ -452,16 +490,20 @@ public:
     }
     [[nodiscard]] tensor<T> copy() const
     {
-
         if (is_contiguous())
         {
-            return tensor<T>(*data_, dim_);
+            // return tensor<T>(std::move(*data_), dim_);
+            return *this;
         }
 
-        std::vector<T> new_data;
-        new_data.resize(size());
-        T *__restrict data = new_data.data();
-        const T *__restrict src = data_->data();
+        // std::vector<T> new_data;
+        // new_data.reserve(size());
+        // T *__restrict data = new_data.data();
+        // const T *__restrict src = data_->data();
+        const T *__restrict src = data_.get();
+        std::shared_ptr<T[]> new_data(new T[size()], std::default_delete<T[]>());
+        T *__restrict data = new_data.get();
+
         src += offset;
         std::vector<size_t> counts(dim_.size(), 1);
         const auto [cont_size, cont_offset] = collapse_size();
@@ -500,8 +542,8 @@ public:
                 const int64_t dstride = strides_[0];
                 for (size_t ind = 0; ind < radix_size; ++ind)
                 {
-                    data[dest_pos++] = src[cur_pos];
-                    cur_pos += dstride;
+                    *data++ = *src;
+                    src += dstride;
                 }
             }
 
@@ -520,8 +562,8 @@ public:
 
                     for (ssize_t j = 0; j < dim1_len; ++j)
                     {
-                        data[dest_pos++] = src_i[cur_pos];
-                        cur_pos += stride1;
+                        *data++ = *src_i;
+                        src_i += stride1;
                     }
                 }
             }
@@ -546,7 +588,8 @@ public:
 
                         for (ssize_t k = 0; k < dim2_len; ++k)
                         {
-                            data[dest_pos++] = src_ind_j[stride2 * k];
+                            *data++ = *src_ind_j;
+                            src_ind_j += stride2;
                         }
                     }
                 }
@@ -602,7 +645,7 @@ public:
                 }
             }
         }
-        */
+            */
 
         // else
         //{
@@ -619,9 +662,13 @@ public:
         }
         // }
 
-        return tensor<T>(new_data, dim_);
+        // return tensor<T>(std::move(new_data), dim_);
+        return tensor<T>(new_data, size(), dim_);
     }
-    [[nodiscard]] const std::vector<size_t> &shape() const { return dim_; }
+    [[nodiscard]] const std::vector<size_t> &shape() const
+    {
+        return dim_;
+    }
     //[[nodiscard]] const std::vector<int64_t> &strides() const { return strides_; }
     [[nodsicard]] tensor<T> reshape(const std::vector<size_t> &newshape) const
     {
@@ -636,143 +683,115 @@ public:
 
     tensor<T> operator+(const tensor<T> &b) const
     {
-        /*
-
-
-        */
-
-        /*
-        tensor<T> out_tens;
-        tensor<T> min_tens;
-        tensor<T> max_tens;
-
-        if (dim_.size() < b.dim_.size())
-        {
-            min_tens = tensor<T>(*data_, dim_);
-            max_tens = tensor<T>(*b.data_, b.dim_);
-        }
-        else
-        {
-            min_tens = tensor<T>(*b.data_, b.dim_);
-            max_tens = tensor<T>(*data_, dim_);
-        }
-        */
         size_t size_output = 1;
-        // size_t size_min = std::min(size(), b.size());
-        // size_t size_outer = std::max(size(), b.size()) / size_min;
+
         size_t dim_size_min = std::min(dim_.size(), b.dim_.size());
         size_t dim_size_max = std::max(dim_.size(), b.dim_.size());
         std::vector<size_t> res_dim(dim_size_max);
-        std::vector<int64_t> new_a_strides = strides_;
-        std::vector<int64_t> new_b_strides = b.strides_;
-        int a_ind = dim_.size();
-        int b_ind = b.dim_.size();
+        AxisIter a_itr[NDIM];
+        AxisIter b_itr[NDIM];
 
-        for (int i = 1; i <= dim_size_max; i++)
+        for (int j = 0; j < dim_size_max; ++j)
         {
-            a_ind--;
-            b_ind--;
-            if (a_ind < 0)
-            {
+            a_itr[j].dim = j < dim_.size() ? dim_[j] : 1;
+            b_itr[j].dim = j < b.dim_.size() ? b.dim_[j] : 1;
 
-                size_output *= b.dim_[b_ind];
-                res_dim[dim_size_max - i] = b.dim_[b_ind];
-                continue;
-            }
-            else if (b_ind < 0)
+            if (a_itr[j].dim == 1 && b_itr[j].dim > 1)
             {
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
-                continue;
+                a_itr[j].dim = b_itr[j].dim;
+                size_output *= b_itr[j].dim;
+                res_dim[j] = b_itr[j].dim;
+                b_itr[j].advance = b.strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b_itr[j].advance;
             }
-            if (dim_[a_ind] == 1 && b.dim_[b_ind] > 1)
+            else if (b_itr[j].dim == 1 && a_itr[j].dim > 1)
             {
-                new_a_strides[a_ind] = 0;
-                size_output *= b.dim_[b_ind];
-                res_dim[dim_size_max - i] = b.dim_[b_ind];
+                b_itr[j].dim = a_itr[j].dim;
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * a_itr[j].advance;
             }
-            else if (b.dim_[b_ind] == 1 && dim_[a_ind] > 1)
+            else if (b_itr[j].dim == a_itr[j].dim)
             {
-                new_b_strides[b_ind] = 0;
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
-            }
-            else if (dim_[a_ind] != b.dim_[b_ind])
-            {
-                // throw std::invalid_arguement("Axes are mismatched. Check your code");
-            }
-            else
-            {
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
+                b_itr[j].advance = b.strides_[j];
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b.strides_[j];
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
             }
         }
+        // std::vector<T> out(size_output);
 
-        int64_t a_index = offset;
-        int64_t b_index = b.offset;
-        const T *__restrict b_data = b.data_->data();
-        const T *__restrict a_data = data_->data();
-        std::vector<size_t> a_counts(dim_.size(), 0);
-        std::vector<size_t> b_counts(b.dim_.size(), 0);
-        std::vector<T> out(size_output);
-        T *out_data = out.data();
-        size_t counts_stack[NDIM];
-        size_t bcounts_stack[NDIM];
-        int64_t astrides_stack[NDIM];
-        int64_t bstrides_stack[NDIM];
+        // T *out_data = out.data();
+        std::shared_ptr<T[]> out(new T[size_output], std::default_delete<T[]>());
+        T *__restrict out_data = out.get();
 
-        for (size_t i = 0; i < a_counts.size(); i++)
-            counts_stack[i] = a_counts[i];
+        const T *__restrict b_data = b.data_.get() + b.offset;
+        const T *__restrict a_data = data_.get() + offset;
+        int64_t a_index = 0;
+        int64_t b_index = 0;
+        size_t ind_max = dim_size_max - 1;
 
-        for (size_t i = 0; i < b_counts.size(); i++)
-            bcounts_stack[i] = b_counts[i];
+        for (size_t i = 0; i < size_output; ++i)
+        {
 
-        for (size_t i = 0; i < new_a_strides.size(); i++)
-            astrides_stack[i] = new_a_strides[i];
+            out_data[i] = *a_data + *b_data;
 
-        for (size_t i = 0; i < new_b_strides.size(); i++)
-            bstrides_stack[i] = new_b_strides[i];
-
-        size_t *counts_data = counts_stack;
-        size_t *bcounts_data = bcounts_stack;
-        int64_t *astrides_data = astrides_stack;
-        int64_t *bstrides_data = bstrides_stack;
-
-        const size_t max_a_dim = a_counts.size() - 1;
-        const size_t max_b_dim = b_counts.size() - 1;
+            getIndex(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        }
+        // return tensor<T>(std::move(out), res_dim);
+        return tensor<T>(out, size_output, res_dim);
 
         /*
         if (is_contiguous() && b.is_contiguous()){
             for (size_t j = 0; j < size_output; )
         }
             */
-
-        for (size_t i = 0; i < size_output; ++i)
-        {
-
-            out_data[i] = a_data[a_index] + b_data[b_index];
-            getIndex(counts_data, astrides_data, 0, max_a_dim, a_index);
-            b.getIndex(bcounts_data, bstrides_data, 0, max_b_dim, b_index);
-            // std::cout << "i: " << i << std::endl;
-        }
-
-        return tensor<T>(out, res_dim);
     }
     tensor<T> operator-(const tensor<T> &b) const
     {
         size_t size_output = 1;
-        // size_t size_min = std::min(size(), b.size());
-        // size_t size_outer = std::max(size(), b.size()) / size_min;
         size_t dim_size_min = std::min(dim_.size(), b.dim_.size());
         size_t dim_size_max = std::max(dim_.size(), b.dim_.size());
         std::vector<size_t> res_dim(dim_size_max);
-        std::vector<int64_t> new_a_strides = strides_;
-        std::vector<int64_t> new_b_strides = b.strides_;
         AxisIter a_itr[NDIM];
-        AxisIter b_iter[NDIM];
-        for (int j = 0; j < dim_size_max)
+        AxisIter b_itr[NDIM];
+
+        for (int j = 0; j < dim_size_max; ++j)
         {
+            a_itr[j].dim = j < dim_.size() ? dim_[j] : 1;
+            b_itr[j].dim = j < b.dim_.size() ? b.dim_[j] : 1;
+
+            if (a_itr[j].dim == 1 && b_itr[j].dim > 1)
+            {
+                a_itr[j].dim = b_itr[j].dim;
+                size_output *= b_itr[j].dim;
+                res_dim[j] = b_itr[j].dim;
+                b_itr[j].advance = b.strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b_itr[j].advance;
+            }
+            else if (b_itr[j].dim == 1 && a_itr[j].dim > 1)
+            {
+                b_itr[j].dim = a_itr[j].dim;
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * a_itr[j].advance;
+            }
+            else if (b_itr[j].dim == a_itr[j].dim)
+            {
+                b_itr[j].advance = b.strides_[j];
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b.strides_[j];
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
+            }
         }
+
+        /*
         int a_ind = dim_.size();
         int b_ind = b.dim_.size();
 
@@ -849,21 +868,32 @@ public:
         const size_t max_a_dim = a_counts.size() - 1;
         const size_t max_b_dim = b_counts.size() - 1;
 
-        /*
+
         if (is_contiguous() && b.is_contiguous()){
             for (size_t j = 0; j < size_output; )
         }
-            */
+        */
+        // std::vector<T> out(size_output);
+
+        // T *out_data = out.data();
+        std::shared_ptr<T[]> out(new T[size_output], std::default_delete<T[]>());
+        T *__restrict out_data = out.get();
+
+        const T *__restrict b_data = b.data_.get() + b.offset;
+        const T *__restrict a_data = data_.get() + offset;
+        int64_t a_index = 0;
+        int64_t b_index = 0;
+        size_t ind_max = dim_size_max - 1;
 
         for (size_t i = 0; i < size_output; ++i)
         {
 
-            out_data[i] = a_data[a_index] - b_data[b_index];
-            getIndex(counts_data, astrides_data, 0, max_a_dim, a_index);
-            getIndex(bcounts_data, bstrides_data, 0, max_b_dim, b_index);
-            // std::cout << "i: " << i << std::endl;
+            out_data[i] = *a_data - *b_data;
+
+            getIndex(a_itr, b_itr, 0, ind_max, a_data, b_data);
         }
-        return tensor<T>(out, res_dim);
+        // return tensor<T>(std::move(out), res_dim);
+        return tensor<T>(out, size_output, res_dim);
     }
     tensor<T> operator*(const tensor<T> &b) const
     {
@@ -871,182 +901,200 @@ public:
         size_t dim_size_min = std::min(dim_.size(), b.dim_.size());
         size_t dim_size_max = std::max(dim_.size(), b.dim_.size());
         std::vector<size_t> res_dim(dim_size_max);
-        std::vector<int64_t> new_a_strides = strides_;
-        std::vector<int64_t> new_b_strides = b.strides_;
-        int a_ind = dim_.size();
-        int b_ind = b.dim_.size();
+        AxisIter a_itr[NDIM];
+        AxisIter b_itr[NDIM];
 
-        if (is_contiguous() && b.is_contiguous())
+        for (int j = 0; j < dim_size_max; ++j)
         {
-        }
+            a_itr[j].dim = j < dim_.size() ? dim_[j] : 1;
+            b_itr[j].dim = j < b.dim_.size() ? b.dim_[j] : 1;
 
-        for (int i = 1; i <= dim_size_max; i++)
-        {
-            a_ind--;
-            b_ind--;
-            if (a_ind < 0)
+            if (a_itr[j].dim == 1 && b_itr[j].dim > 1)
             {
-
-                size_output *= b.dim_[b_ind];
-                res_dim[dim_size_max - i] = b.dim_[b_ind];
-                continue;
+                a_itr[j].dim = b_itr[j].dim;
+                size_output *= b_itr[j].dim;
+                res_dim[j] = b_itr[j].dim;
+                b_itr[j].advance = b.strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b_itr[j].advance;
             }
-            else if (b_ind < 0)
+            else if (b_itr[j].dim == 1 && a_itr[j].dim > 1)
             {
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
-                continue;
+                b_itr[j].dim = a_itr[j].dim;
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * a_itr[j].advance;
             }
-            if (dim_[a_ind] == 1 && b.dim_[b_ind] > 1)
+            else if (b_itr[j].dim == a_itr[j].dim)
             {
-                new_a_strides[a_ind] = 0;
-                size_output *= b.dim_[b_ind];
-                res_dim[dim_size_max - i] = b.dim_[b_ind];
-            }
-            else if (b.dim_[b_ind] == 1 && dim_[a_ind] > 1)
-            {
-                new_b_strides[b_ind] = 0;
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
-            }
-            else if (dim_[a_ind] != b.dim_[b_ind])
-            {
-                // throw std::invalid_arguement("Axes are mismatched. Check your code");
-            }
-            else
-            {
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
+                b_itr[j].advance = b.strides_[j];
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b.strides_[j];
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
             }
         }
+        // std::vector<T> out(size_output);
 
-        int64_t a_index = offset;
-        int64_t b_index = b.offset;
-        const T *__restrict b_data = b.data_->data();
-        const T *__restrict a_data = data_->data();
-        std::vector<size_t> a_counts(dim_.size(), 0);
-        std::vector<size_t> b_counts(b.dim_.size(), 0);
-        std::vector<T> out(size_output);
-        T *out_data = out.data();
-        size_t counts_stack[NDIM];
-        size_t bcounts_stack[NDIM];
-        int64_t astrides_stack[NDIM];
-        int64_t bstrides_stack[NDIM];
+        // T *out_data = out.data();
+        std::shared_ptr<T[]> out(new T[size_output], std::default_delete<T[]>());
+        T *__restrict out_data = out.get();
 
-        for (size_t i = 0; i < a_counts.size(); i++)
-            counts_stack[i] = a_counts[i];
+        const T *__restrict b_data = b.data_.get() + b.offset;
+        const T *__restrict a_data = data_.get() + offset;
+        int64_t a_index = 0;
+        int64_t b_index = 0;
+        size_t ind_max = dim_size_max - 1;
 
-        for (size_t i = 0; i < b_counts.size(); i++)
-            bcounts_stack[i] = b_counts[i];
+        for (size_t i = 0; i < size_output; ++i)
+        {
 
-        for (size_t i = 0; i < new_a_strides.size(); i++)
-            astrides_stack[i] = new_a_strides[i];
+            out_data[i] = (*a_data) * (*b_data);
 
-        for (size_t i = 0; i < new_b_strides.size(); i++)
-            bstrides_stack[i] = new_b_strides[i];
-
-        size_t *counts_data = counts_stack;
-        size_t *bcounts_data = bcounts_stack;
-        int64_t *astrides_data = astrides_stack;
-        int64_t *bstrides_data = bstrides_stack;
-
-        const size_t max_a_dim = a_counts.size() - 1;
-        const size_t max_b_dim = b_counts.size() - 1;
+            getIndex(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        }
+        // return tensor<T>(std::move(out), res_dim);
+        return tensor<T>(out, size_output, res_dim);
 
         /*
         if (is_contiguous() && b.is_contiguous()){
             for (size_t j = 0; j < size_output; )
         }
             */
-
-        for (size_t i = 0; i < size_output; ++i)
-        {
-
-            out_data[i] = a_data[a_index] * b_data[b_index];
-            getIndex(counts_data, astrides_data, 0, max_a_dim, a_index);
-            b.getIndex(bcounts_data, bstrides_data, 0, max_b_dim, b_index);
-            // std::cout << "i: " << i << std::endl;
-        }
-        return tensor<T>(out, res_dim);
     }
     tensor<T> operator/(const tensor<T> &b) const
     {
         size_t size_output = 1;
-        // size_t size_min = std::min(size(), b.size());
-        // size_t size_outer = std::max(size(), b.size()) / size_min;
         size_t dim_size_min = std::min(dim_.size(), b.dim_.size());
         size_t dim_size_max = std::max(dim_.size(), b.dim_.size());
         std::vector<size_t> res_dim(dim_size_max);
-        std::vector<int64_t> new_a_strides = strides_;
-        std::vector<int64_t> new_b_strides = b.strides_;
-        int a_ind = dim_.size();
-        int b_ind = b.dim_.size();
+        AxisIter a_itr[NDIM];
+        AxisIter b_itr[NDIM];
 
-        for (int i = 1; i <= dim_size_max; i++)
+        for (int j = 0; j < dim_size_max; ++j)
         {
-            a_ind--;
-            b_ind--;
-            if (a_ind < 0)
-            {
+            a_itr[j].dim = j < dim_.size() ? dim_[j] : 1;
+            b_itr[j].dim = j < b.dim_.size() ? b.dim_[j] : 1;
 
-                size_output *= b.dim_[b_ind];
-                res_dim[dim_size_max - i] = b.dim_[b_ind];
-                continue;
-            }
-            else if (b_ind < 0)
+            if (a_itr[j].dim == 1 && b_itr[j].dim > 1)
             {
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
-                continue;
+                a_itr[j].dim = b_itr[j].dim;
+                size_output *= b_itr[j].dim;
+                res_dim[j] = b_itr[j].dim;
+                b_itr[j].advance = b.strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b_itr[j].advance;
             }
-            if (dim_[a_ind] == 1 && b.dim_[b_ind] > 1)
+            else if (b_itr[j].dim == 1 && a_itr[j].dim > 1)
             {
-                new_a_strides[a_ind] = 0;
-                size_output *= b.dim_[b_ind];
-                res_dim[dim_size_max - i] = b.dim_[b_ind];
+                b_itr[j].dim = a_itr[j].dim;
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * a_itr[j].advance;
             }
-            else if (b.dim_[b_ind] == 1 && dim_[a_ind] > 1)
+            else if (b_itr[j].dim == a_itr[j].dim)
             {
-                new_b_strides[b_ind] = 0;
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
-            }
-            else if (dim_[a_ind] != b.dim_[b_ind])
-            {
-                // throw std::invalid_arguement("Axes are mismatched. Check your code");
-            }
-            else
-            {
-                size_output *= dim_[a_ind];
-                res_dim[dim_size_max - i] = dim_[a_ind];
+                b_itr[j].advance = b.strides_[j];
+                a_itr[j].advance = strides_[j];
+                a_itr[j].reset_val = (a_itr[j].dim - 1) * strides_[j];
+                b_itr[j].reset_val = (b_itr[j].dim - 1) * b.strides_[j];
+                size_output *= a_itr[j].dim;
+                res_dim[j] = a_itr[j].dim;
             }
         }
 
-        int64_t a_index = offset;
-        int64_t b_index = b.offset;
-        const T *__restrict b_data = b.data_->data();
-        const T *__restrict a_data = data_->data();
-        std::vector<size_t> a_counts(dim_.size(), 0);
-        std::vector<size_t> b_counts(b.dim_.size(), 0);
-        std::vector<T> out(size_output);
-        const T *__restrict out_data = out->data();
+        // std::vector<T> out(size_output);
+
+        // T *out_data = out.data();
+        std::shared_ptr<T[]> out(new T[size_output], std::default_delete<T[]>());
+        T *__restrict out_data = out.get();
+
+        const T *__restrict b_data = b.data_.get() + b.offset;
+        const T *__restrict a_data = data_.get() + offset;
+        int64_t a_index = 0;
+        int64_t b_index = 0;
+        size_t ind_max = dim_size_max - 1;
+
+        for (size_t i = 0; i < size_output; ++i)
+        {
+
+            out_data[i] = (*a_data) / (*b_data);
+
+            getIndex(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        }
+        // return tensor<T>(std::move(out), res_dim);
+        return tensor<T>(out, size_output, res_dim);
 
         /*
         if (is_contiguous() && b.is_contiguous()){
             for (size_t j = 0; j < size_output; )
         }
             */
-
-        for (size_t i = 0; i < size_output; ++i)
-        {
-
-            out_data[i] = a_data[a_index] / b_data[b_index];
-            a_index = getIndex(a_counts, new_a_strides, 0, a_counts.size() - 1, a_index);
-            b_index = b.getIndex(b_counts, new_b_strides, 0, b_counts.size() - 1, b_index);
-            // std::cout << "i: " << i << std::endl;
-        }
-        return tensor<T>(out, res_dim);
     }
+    template <typename ElmOp>
+    tensor<T> reduce_op(int a, ElmOp op)
+    {
+        AxisIter itr[NDIM];
+        size_t size_output = 1;
+        size_t inner_size = dim_[a];
+        size_t inner_ind = dim_.size() - 2;
+        std::vector<size_t> new_dim = dim_;
+        new_dim.erase(new_dim.begin() + a);
+
+        for (size_t i = 0; i < dim_.size() - 1; ++i)
+        {
+            int ind = i;
+            if (i >= a)
+            {
+                ++ind;
+            }
+            itr[ind].advance = strides_[ind];
+            itr[ind].reset_val = (dim_[ind] - 1) * strides_[ind];
+            itr[ind].dim = dim_[ind];
+            size_output *= dim_[ind];
+        }
+        /*
+        std::vector<T> out(size_output);
+        T *__restrict out_data = out.data();
+        const T *__restrict data__ = data_->data() + offset;
+        */
+        // std::vector<T> out(size_output);
+
+        // T *out_data = out.data();
+        std::shared_ptr<T[]> out(new T[size_output], std::default_delete<T[]>());
+        const T *__restrict out_data = out.get();
+        const T *__restrict data__ = data_.get() + offset;
+
+        int64_t inner_stride = strides_[a];
+        int64_t reset_val = inner_stride * inner_size;
+        T res_val;
+        for (size_t j = 0; j < size_output; ++j)
+        {
+            res_val = *data__;
+            data__ += inner_stride;
+            for (size_t i = 1; i < inner_size; ++i)
+            {
+                res_val = op(res_val, *data__);
+
+                data__ += inner_stride;
+            }
+
+            *out_data++ = res_val;
+            data__ -= reset_val;
+            getIndex(itr, 0, inner_ind, data__);
+        }
+
+        // return tensor<T>(std::move(out), new_dim);
+        return tensor<T>(out, size_output, new_dim);
+    }
+    /*
+    tensor<T> argmax(int axis = -1){
+        int64_t intial_offset =
+    } tensor<T> argmin(int axis = -1)
+    {
+    }
+    */
     tensor<double> power(const double &a)
     {
         std::vector<T> new_data_ = *data_;
@@ -1059,7 +1107,6 @@ public:
 
     [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const
     {
-
         std::vector<size_t> new_dim = dim_;
         new_dim.insert(new_dim.end(), other.dim_.begin(), other.dim_.end());
 
@@ -1068,12 +1115,18 @@ public:
 
         const size_t this_size = size();
         const size_t other_size = other.size();
-        const T *__restrict A_data = A.data_->data();
-        const T *__restrict B_data = B.data_->data();
+        const T *__restrict A_data = A.data_.get();
+        const T *__restrict B_data = B.data_.get();
 
+        /*
         std::vector<T> new_data;
         new_data.resize(this_size * other_size); // avoid zero-fill if not needed
         T *__restrict new_data_ = new_data.data();
+        */
+
+        std::shared_ptr<T[]> new_data(new T[this_size * other_size], std::default_delete<T[]>());
+        const T *__restrict new_data_ = new_data.get();
+
         for (int64_t i = 0; i < this_size; ++i)
         {
 
@@ -1110,7 +1163,6 @@ public:
 
     friend std::ostream &operator<<(std::ostream &out, const tensor<T> &tensor)
     {
-
         printTens(out, tensor, tensor.offset);
         return out;
     }
@@ -1122,13 +1174,20 @@ void printTens(std::ostream &out, tensor<T> tensor, int64_t start, size_t depth 
 
     std::vector<int64_t> stride = tensor.strides();
     std::vector<size_t> dim = tensor.dim();
-    std::vector<T> data = tensor.data();
+    const T *__restrict data = tensor.data();
+
     int width = 0;
     if (width == 0)
     {
+        /*
         for (const auto &val : data)
         {
             width = std::max(width, (int)std::to_string(val).size());
+        }
+            */
+        for (size_t ind = 0; ind < tensor.size(); ++ind)
+        {
+            width = std::max(width, (int)std::to_string(data[ind]).size());
         }
     }
 

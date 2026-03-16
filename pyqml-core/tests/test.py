@@ -1,9 +1,8 @@
 
 import numpy as np
-#np.__config__.show()
 
-import threadpoolctl
-threadpoolctl.threadpool_info()
+
+
 
 
 
@@ -11,9 +10,10 @@ import time
 
 def time_block(name, fn):
     t0 = time.perf_counter()
-    out = fn()
+    for i in range (0, 10000):
+        out = fn()   
     t1 = time.perf_counter()
-    print(f"{name}: {t1 - t0:.6f} sec")
+    print(f"{name}: {(t1 - t0)/10000:.6f} sec")
     return out
 
 
@@ -47,6 +47,7 @@ print("vC contiguous?", vC.flags['C_CONTIGUOUS'])
 # -------------------------------
 # Triple tensor product
 # -------------------------------
+"""
 def triple_tensor_product():
     # First outer product
     T1 = np.multiply.outer(vA, vB)
@@ -59,9 +60,10 @@ def triple_tensor_product():
 # Timing
 # -------------------------------
 T = time_block("Triple tensor product (NumPy)", triple_tensor_product)
+"""
 
 # Touch one element so Python can't optimize it away
-print("Sample:", T[0, 0, 0, 0, 0, 0])
+#print("Sample:", T[0, 0, 0, 0, 0, 0])
 
 
 D0 = 200
@@ -145,7 +147,6 @@ data = (np.arange(TOTAL, dtype=np.int32) % 97).reshape(X, Y, Z)
 
 print(f"Tensor: {X} x {Y} x {Z} ({TOTAL} elements)")
 
-np.show_config()
 
 # Warm‑up
 tmp = data[
@@ -277,7 +278,7 @@ _ = A + B
 # -----------------------------
 C = time_block(
     "Broadcast add (512x256x64) + (1x256x1)",
-    lambda: A + B - A*B +(A*B*B)
+    lambda: A - B
 )
 
 # Force usage so it isn't optimized away
