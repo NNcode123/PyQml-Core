@@ -12,11 +12,11 @@ template <typename F>
 void time_block(const std::string &name, F &&fn)
 {
     auto t0 = std::chrono::high_resolution_clock::now();
-    for (size_t j = 0; j < 10000; ++j)
+    for (size_t j = 0; j < 500; ++j)
         fn();
     auto t1 = std::chrono::high_resolution_clock::now();
     std::cout << name << ": "
-              << std::chrono::duration<double>(t1 - t0).count() / 10000
+              << std::chrono::duration<double>(t1 - t0).count() / 500
               << " sec\n";
 }
 
@@ -1074,6 +1074,7 @@ int main()
     std::cout << "Result tensor:\n";
 
     std::cout << A_V << "\n\n";
+    std::cout << "Arg_max along axis 0 " << A_V.argmax(1) << std::endl;
     std::cout << B_V << "\n\n";
 
     std::cout << "C_V" << C_V << "\n\n";

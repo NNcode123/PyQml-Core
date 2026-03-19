@@ -1,5 +1,21 @@
 
 import numpy as np
+import sys
+
+import os 
+os.add_dll_directory(r"C:\msys64\mingw64\bin")
+
+
+
+import pyqmlcore as pyq
+li2 = [1,2,3,4]
+li1 = [2,2]
+tens = pyq.Tensor(data = li2,dim = li1, py)
+#tens_1 = pyq.Tensor([3,4,5],[3,1])
+# tens_2 = tens+tens_1
+print(tens)
+
+
 
 
 
@@ -10,10 +26,10 @@ import time
 
 def time_block(name, fn):
     t0 = time.perf_counter()
-    for i in range (0, 10000):
+    for i in range (0, 1000):
         out = fn()   
     t1 = time.perf_counter()
-    print(f"{name}: {(t1 - t0)/10000:.6f} sec")
+    print(f"{name}: {(t1 - t0)/1000:.6f} sec")
     return out
 
 
