@@ -115,7 +115,7 @@ public:
     [[nodiscard]] std::vector<size_t> dim() const { return dim_; }
     [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
     [[nodiscard]] size_t ndim() { return dim_.size(); }
-    [[nodiscard]] T *data() const { return data_.get(); }
+    [[nodiscard]] T *data() const { return data_.get() + offset; }
     [[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
     [[nodiscard]] const std::vector<size_t> &shape() const { return dim_; }
     [[nodiscard]] size_t ofst() const { return offset; }

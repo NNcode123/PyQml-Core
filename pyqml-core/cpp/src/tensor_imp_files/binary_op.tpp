@@ -51,8 +51,8 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func op)
     std::shared_ptr<R[]> out(new R[size_output], std::default_delete<R[]>());
     R *__restrict out_data = out.get();
 
-    const V *__restrict b_data = b.data() + b.ofst();
-    const T *__restrict a_data = a.data() + a.ofst();
+    const V *__restrict b_data = b.data();
+    const T *__restrict a_data = a.data();
     size_t ind_max = dim_size_max - 1;
 
     for (size_t i = 0; i < size_output; ++i)
