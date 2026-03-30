@@ -1,7 +1,5 @@
 
-
-#include "dtype.hpp"
-#include "bindings.hpp"
+#include "Tensor.hpp"
 
 namespace py = pybind11;
 
@@ -14,73 +12,62 @@ void bind_tensor(py::module &m)
                          py::object type = py::none())
                       {
 
-        DType dtype;
-        if (type.is_none()) {
-            dtype = DType::Float32;
-        } else {
-            dtype = type.cast<DType>();
-        }
-        
+        DType dtype = type.is_none() ? DType::NoneType : type.cast<DType>();
+    
+        py::array vals = py::array(data);
+        auto dt = vals.dtype();
 
-        switch (dtype) {
-            case DType::Int8:
-                return Tensor(
-                    tensor<int8_t>(data.cast<std::vector<int8_t>>(), dim.cast<std::vector<size_t>>()), dtype
-                );
+        DType implied_type = inf_dtyp_python<int8_t,int16_t,int32_t,int64_t,float,double>(dt);
 
-            case DType::Int16:
-                return Tensor(
-                    tensor<int16_t>(data.cast<std::vector<int16_t>>(), dim.cast<std::vector<size_t>>()),
-                    dtype                );
+        DType res_type = type.is_none() ? implied_type: dtype;
 
-            case DType::Int32:
-                return Tensor(
-                    tensor<int32_t>(data.cast<std::vector<int32_t>>(), dim.cast<std::vector<size_t>>()),
-                    dtype
-                );
-
-            case DType::Int64:
-                return Tensor(
-                    tensor<int64_t>(data.cast<std::vector<int64_t>>(), dim.cast<std::vector<size_t>>()),
-                    dtype
-                );
-
-                /*
-
-            case DType::Int:
-                return Tensor(
-                    tensor<int>(data.cast<std::vector<int>>(), dim.cast<std::vector<size_t>>().cast<std::vector<size_t>>()),
-                    dtype
-                );
-                */
-
-            case DType::Float32:
-                return Tensor(
-                    tensor<float>(data.cast<std::vector<float>>(), dim.cast<std::vector<size_t>>()),
-                    dtype
-                );
-
-            case DType::Float64:
-                return Tensor(
-                    tensor<double>(data.cast<std::vector<double>>(), dim.cast<std::vector<size_t>>()),
-                    dtype
-                );
-
-            default:
-                throw std::runtime_error("Unsupported dtype");
-        } }),
+        Tensor res =  Tensor::dispatch(res_type, [&](auto inst_t){
+            using R = std::decay_t<decltype(inst_t)>;
+            
+          
+           py::array_t<R, py::array::c_style | py::array::forcecast> new_val =
+        vals.cast<py::array_t<R, py::array::c_style | py::array::forcecast>>();
+            return Tensor(new_val, dim.cast<std::vector<size_t>>(), res_type );
+        });
+      
+        return res; }),
              py::arg("data"),
              py::arg("dim"),
              py::arg("type") = py::none())
 
-        .def("__add__", [](const Tensor &a, const Tensor &b)
-             { return Tensor(a) + Tensor(b); })
-        .def("__sub__", [](const Tensor &a, const Tensor &b)
-             { return Tensor(a) - Tensor(b); })
+        .def("__add__", &Tensor::operator+)
 
-                .def("__repr__", [](const Tensor &a)
+        .def("__sub__", &Tensor::operator-)
 
-             {  std::stringstream out;
-                 return Tensor(a).print_val(out); });
-    //.def("dtype", )
+        .def("__mul__", &Tensor::operator*)
+
+        //.def("__matmul__", &Tensor::operator*)
+
+        .def("__div__", &Tensor::operator/)
+
+        .def("__repr__", &Tensor::print_val)
+
+        .def("astype", [&](const Tensor &a, py::object q, py::bool_ u)
+             {
+            DType n_type = infer_types(q, false);
+           bool u_n = u;
+            return a.astype(n_type,u_n); }, py::arg("dtype"), py::arg("copy") = false)
+
+        .def_property_readonly("dtype", &Tensor::type)
+
+        .def_property_readonly("shape", &Tensor::shape);
+    m.def("arange", [&](py::object start, py::object step, py::object end)
+          {
+            DType st_d = infer_types(start,true);
+            DType st_s = infer_types(step,true);
+            DType st_e = infer_types(end,true);
+            DType max_type = std::max({st_d,st_s,st_e});
+            Tensor res =  Tensor::dispatch(max_type, [&](auto val){
+                using T = std::decay_t<decltype(val)>;
+                T n_st = start.cast<T>();
+                T n_ste = step.cast<T>();
+                T n_end = end.cast<T>();
+                return Tensor::arange(n_st, n_ste, n_end, max_type);
+            });
+            return res; });
 }

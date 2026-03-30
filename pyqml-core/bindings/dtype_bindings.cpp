@@ -13,13 +13,15 @@ void bind_dtype(py::module_ &m)
         //.value("int", DType::Int)
         .value("float32", DType::Float32)
         .value("float64", DType::Float64)
-        .export_values();
-
-    m.attr("int8") = DType::Int8;
-    m.attr("int16") = DType::Int16;
-    m.attr("int32") = DType::Int32;
-    m.attr("int64") = DType::Int64;
-    // m.attr("int") = DType::Int;
-    m.attr("float32") = DType::Float32;
-    m.attr("float64") = DType::Float64;
+        .export_values()
+        .def("__repr__", [](DType d)
+             {
+        switch (d) {
+            case DType::Int8: return "int8";
+            case DType::Int16: return "int16";
+            case DType::Int32: return "int32";
+            case DType::Int64: return "int64";
+            case DType::Float32: return "float32";
+            case DType::Float64: return "float64";
+        } });
 }

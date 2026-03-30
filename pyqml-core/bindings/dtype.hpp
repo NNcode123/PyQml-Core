@@ -1,10 +1,13 @@
 #pragma once
 #include <variant>
 #include <tuple>
+#include <cmath>
+#include "bindings.hpp"
 #include "../cpp/src/tensor.hpp"
 
 enum class DType
 {
+    NoneType,
     Int8,
     Int16,
     Int32,
@@ -36,6 +39,47 @@ struct DispatchTable{
 
 }
 */
+
+template <typename T>
+struct typeDType;
+
+// Ints
+template <>
+struct typeDType<int8_t>
+{
+    static constexpr DType type = DType::Int8;
+};
+
+template <>
+struct typeDType<int16_t>
+{
+    static constexpr DType type = DType::Int16;
+};
+
+template <>
+struct typeDType<int32_t>
+{
+    static constexpr DType type = DType::Int32;
+};
+
+template <>
+struct typeDType<int64_t>
+{
+    static constexpr DType type = DType::Int64;
+};
+
+// Floats
+template <>
+struct typeDType<float>
+{
+    static constexpr DType type = DType::Float32;
+};
+
+template <>
+struct typeDType<double>
+{
+    static constexpr DType type = DType::Float64;
+};
 
 template <typename T>
 struct TypeRank
@@ -139,72 +183,5 @@ struct RankToType<5>
     using type = double;
 };
 
-struct Tensor
-{
-    std::variant<tensor<int64_t>, tensor<int32_t>, tensor<int16_t>, tensor<int8_t>, tensor<float>, tensor<double>> tens;
-    DType dtype;
-    template <typename T>
-    Tensor(tensor<T> &&tqn, DType typ) : tens(tqn), dtype(typ) {}
-    std::vector<size_t> shape()
-    {
-        return std::visit([](const auto &t)
-                          { return t.shape(); }, tens);
-    }
 
-    /*
-    size_t ndim()
-    {
-        return std::visit([](const auto &t)
-                          { return t.ndim(); }, tens);
-    }
-                          */
 
-    Tensor operator+(const Tensor &other)
-    {
-        return std::visit([&](auto &&t1, auto &&t2) -> Tensor
-                          {
-        using T1 = std::decay_t<decltype(t1)>;
-        using T2 = std::decay_t<decltype(t2)>;
-
-        using U = T1::Data_type;
-        using V = T2::Data_type;
-
-        using R = RankToType<promote<U, V>::rank>::type;
-
-        auto add = [](R a, R b) { return a + b; };
-
-        auto result = binary_ops(t1, t2, add);
-
-        DType res_type = (static_cast<int>(dtype) > static_cast<int>(other.dtype)) ? dtype : other.dtype;
-
-        return Tensor(std::move(result), res_type); }, tens, other.tens);
-    }
-    Tensor operator-(const Tensor &other)
-    {
-        return std::visit([&](auto &&t1, auto &&t2) -> Tensor
-                          {
-        using T1 = std::decay_t<decltype(t1)>;
-        using T2 = std::decay_t<decltype(t2)>;
-
-        using U = T1::Data_type;
-        using V = T2::Data_type;
-
-        using R = RankToType<promote<U, V>::rank>::type;
-
-        auto add = [](R a, R b) { return a - b; };
-
-        auto result = binary_ops(t1, t2, add);
-
-        DType res_type = (static_cast<int>(dtype) > static_cast<int>(other.dtype)) ? dtype : other.dtype;
-
-        return Tensor(std::move(result), res_type); }, tens, other.tens);
-    }
-    Tensor argmax(int a)
-    {
-    }
-    std::string print_val(std::stringstream &out)
-    {
-        return std::visit([&](auto &&t1)
-                          { return get_str(out, t1); }, tens);
-    }
-};

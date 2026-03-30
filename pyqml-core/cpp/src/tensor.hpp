@@ -72,7 +72,10 @@ public:
     using Data_type = T;
     explicit tensor() : data_(nullptr), dim_({}) {}
 
-    explicit tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim)
+    tensor(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, const size_t &ofst, const size_t &te_size) : data_(buffer), dim_(dims),
+                                                                                                                                                           strides_(strides), offset(ofst), t_size(te_size) {}
+
+    tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim)
 
     {
         data_ = std::shared_ptr<T[]>(new T[t_size]);
@@ -119,7 +122,16 @@ public:
     [[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
     [[nodiscard]] const std::vector<size_t> &shape() const { return dim_; }
     [[nodiscard]] size_t ofst() const { return offset; }
-    [[nodiscard]] tensor<T> reshape(const std::vector<size_t> &newshape) const { return tensor<T>(data_, newshape); }
+    [[nodiscard]] tensor<T> reshape(const std::vector<size_t> &newshape) const
+    {
+        if (is_contiguous())
+        {
+            return tensor<T>(data_, t_size, newshape);
+        }
+        tensor<T> cop_tens = copy();
+        return tensor<T>(cop_tens.data_, cop_tens.t_size, newshape);
+    }
+    [[nodiscard]] std::shared_ptr<T[]> owner() const { return data_; }
 
     [[nodiscard]] T at(const std::vector<size_t> &pos) const
     {
@@ -158,13 +170,27 @@ public:
     template <typename V, typename R>
     tensor<R> operator+(const tensor<V> &other);
     template <typename ElmOp>
-    tensor<T> reduce_op(int a, ElmOp op);
+    tensor<T> reduce_op(int a, ElmOp op) const;
     template <typename ElmOp>
     tensor<T> reduce_op(ElmOp op);
-    tensor<T> argmax(int u);
+    tensor<T> max(int axis) const;
+    tensor<T> min(int axis) const;
+    template <typename R>
+    tensor<R> astype(bool copy = false) const;
+    // tensor<T> argmax(int u);
+    /*
     tensor<T> sin() const;
     tensor<T> cos() const;
     tensor<T> exp() const;
+    */
+
+    tensor<T> reshape(const std::vector<size_t> &shpe);
+    /*
+        if one has a view with shape (8,14) then they do slice_view ((0,8,2), (0,14,2)) then offste is identical and strides are multiplied by 2
+        strides are (14,1) new strides are (28,2). Next reshape is applied since new size is now (4, 7) now reshape the tensor to (14, 2)
+        new strides are then (14, )
+        and reshape is applied
+    */
 
     /*
     tensor<double> power(const double &a)
@@ -214,7 +240,7 @@ public:
 
     friend std::ostream &operator<<(std::ostream &out, const tensor<T> &tensor)
     {
-        printTens(out, tensor, tensor.offset);
+        printTens(out, tensor, 0);
         return out;
     }
 };

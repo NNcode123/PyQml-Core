@@ -1038,6 +1038,10 @@ int main()
 
     tensor<double> bigA(data_big_A, SIZE_A, {10, 40, 4});
 
+   // tensor<float> uq = bigA.template astype<float>();
+   // std::cout << uq << std::endl;
+
+
     constexpr size_t SIZE_B = 40 * 20;
     auto data_big_B = std::shared_ptr<double[]>(new double[SIZE_B]);
 
@@ -1070,11 +1074,13 @@ int main()
 
     auto C_V = A_V - B_V;
     auto D_V = (A_V * B_V);
+    tensor<int64_t> res_f = A_V.astype<int64_t>();
 
     std::cout << "Result tensor:\n";
 
     std::cout << A_V << "\n\n";
-    std::cout << "Arg_max along axis 0 " << A_V.argmax(1) << std::endl;
+    std::cout << res_f << std::endl;
+    std::cout << "Arg_max along axis 0 " << A_V.max(1) << std::endl;
     std::cout << B_V << "\n\n";
 
     std::cout << "C_V" << C_V << "\n\n";

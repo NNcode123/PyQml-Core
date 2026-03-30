@@ -60,8 +60,9 @@ void printTens(std::ostream &out, const tensor<T> &tensor, int64_t start, size_t
 }
 
 template <typename T>
-std::string get_str(std::stringstream &out, const tensor<T> &tensor)
+std::string get_str(const tensor<T> &tensor)
 {
-    printTens(out, tensor, tensor.ofst());
+    std::stringstream out;
+    printTens(out, tensor, 0);
     return out.str();
 }

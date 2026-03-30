@@ -1,9 +1,10 @@
 #include "../tensor.hpp"
+#include <type_traits>
 
 template <typename T>
 template <typename ElmOp>
 
-tensor<T> tensor<T>::reduce_op(int a, ElmOp op)
+tensor<T> tensor<T>::reduce_op(int a, ElmOp op) const
 {
     AxisIter itr[NDIM];
     size_t size_output = 1;
@@ -52,8 +53,63 @@ tensor<T> tensor<T>::reduce_op(int a, ElmOp op)
 }
 
 template <typename T>
-tensor<T> tensor<T>::argmax(int u)
+tensor<T> tensor<T>::max(int u) const
 {
     return reduce_op(u, [](const T &a, const T &b)
                      { return std::max(a, b); });
 }
+
+template <typename T>
+
+tensor<T> tensor<T>::min(int u) const
+{
+    return reduce_op(u, [](const T &a, const T &b)
+                     { return std::min(a, b); });
+}
+
+template <typename T>
+template <typename R>
+tensor<R> tensor<T>::astype(bool copy) const
+{
+    /*
+    if (std::is_same_v<std::decay_t<T>, std::decay_t<R>> && !copy)
+    {
+        return tensor<R>(data_, dim_, strides_, offset, t_size);
+    }
+        */
+    AxisIter itr[NDIM];
+    for (size_t j = 0; j < dim_.size(); ++j)
+    {
+        itr[j].advance = strides_[j];
+        itr[j].reset_val = strides_[j] * (dim_[j] - 1);
+        itr[j].dim = dim_[j];
+    }
+
+    std::shared_ptr<R[]> new_ptr(new R[t_size], std::default_delete<R[]>());
+    R *__restrict raw_new = new_ptr.get();
+    const T *__restrict cur_ptr = data_.get() + offset;
+    size_t ind_dim = dim_.size() - 1;
+
+    if (is_contiguous())
+    {
+        for (size_t k = 0; k < t_size; ++k)
+        {
+            *raw_new++ = static_cast<R>(*cur_ptr++);
+        }
+    }
+  
+
+    else
+    {
+        for (size_t k = 0; k < t_size; ++k)
+        {
+           
+            *raw_new++ = static_cast<R>(*cur_ptr);
+            
+            getIndex(itr, 0, ind_dim, cur_ptr);
+        }
+   }
+    return tensor<R>(new_ptr, t_size, dim_);
+}
+
+

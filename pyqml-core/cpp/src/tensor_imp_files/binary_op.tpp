@@ -88,6 +88,7 @@ tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) 
     {
         a_itr[j].dim = j < a.dim_.size() ? a.dim_[j] : 1;
         b_itr[j].dim = j < b.dim_.size() ? b.dim_[j] : 1;
+        
         size_t max_dim = std::max(a_itr[j].dim, b_itr[j].dim);
         if (b_itr[j].dim == a_itr[j].dim)
         {

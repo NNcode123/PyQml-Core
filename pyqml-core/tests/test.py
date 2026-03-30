@@ -2,18 +2,16 @@
 import numpy as np
 import sys
 
+
 import os 
 os.add_dll_directory(r"C:\msys64\mingw64\bin")
 
-
-
 import pyqmlcore as pyq
-li2 = [1,2,3,4]
-li1 = [2,2]
-tens = pyq.Tensor(data = li2,dim = li1, py)
-#tens_1 = pyq.Tensor([3,4,5],[3,1])
-# tens_2 = tens+tens_1
-print(tens)
+
+
+tens_1 = pyq.Tensor([3,4,5],[3,1])
+tens_2 =tens_1
+print(tens_2)
 
 
 

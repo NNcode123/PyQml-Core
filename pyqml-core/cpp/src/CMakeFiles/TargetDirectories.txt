@@ -1,4 +1,0 @@
-C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/CMakeFiles/test.dir
-C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/CMakeFiles/pyqmlcore.dir
-C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/CMakeFiles/edit_cache.dir
-C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/CMakeFiles/rebuild_cache.dir

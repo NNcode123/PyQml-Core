@@ -27,7 +27,7 @@ namespace detail
     template <typename T>
     inline void getIndex(AxisIter *axis_info, size_t start_dim, size_t end_dim, const T *__restrict &src)
     {
-        while (axis_info[end_dim].count == axis_info[end_dim].dim)
+        while (axis_info[end_dim].count >= axis_info[end_dim].dim)
         {
             src -= axis_info[end_dim].reset_val;
             axis_info[end_dim].count = 1;
@@ -109,4 +109,11 @@ namespace detail
         b_data += axes_b[end_index].advance;
     }
 
+}
+
+
+namespace gpu_detail{
+
+
+    
 }
