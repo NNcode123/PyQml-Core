@@ -1,7 +1,61 @@
 
+#pragma once
 #include "Tensor.hpp"
 
-namespace py = pybind11;
+template <typename... Ts>
+
+DType inf_dtyp_python(py::dtype dt)
+{
+    DType result;
+    bool found = false;
+    ([&]()
+     { if (!found && dt.is(py::dtype::of<Ts>())){
+            result = typeDType<Ts>::type;
+            found = true;
+        } }(), ...);
+
+    return result;
+}
+
+inline DType infer_types(py::object obj, bool obj_instance)
+{
+    if (obj_instance)
+    {
+        if (py::isinstance<py::int_>(obj))
+        {
+            return DType::Int64;
+        }
+        if (py::isinstance<py::float_>(obj))
+        {
+            return DType::Float64;
+        }
+    }
+    else
+    {
+        if (py::isinstance<py::type>(obj))
+        {
+            py::object bins = py::module_::import("builtins");
+            py::type Ty = py::cast<py::type>(obj);
+            if (obj.is(bins.attr("int")))
+            {
+                return DType::Int64;
+            }
+            if (obj.is(bins.attr("float")))
+            {
+                return DType::Float64;
+            }
+        }
+    }
+    try
+    {
+        return py::cast<DType>(obj);
+    }
+    catch (const py::cast_error &e)
+    {
+        throw std::runtime_error("Unsupported object type");
+    }
+    throw std::runtime_error("Unsupported object type");
+}
 
 void bind_tensor(py::module &m)
 {
@@ -23,8 +77,6 @@ void bind_tensor(py::module &m)
 
         Tensor res =  Tensor::dispatch(res_type, [&](auto inst_t){
             using R = std::decay_t<decltype(inst_t)>;
-            
-          
            py::array_t<R, py::array::c_style | py::array::forcecast> new_val =
         vals.cast<py::array_t<R, py::array::c_style | py::array::forcecast>>();
             return Tensor(new_val, dim.cast<std::vector<size_t>>(), res_type );
@@ -41,8 +93,6 @@ void bind_tensor(py::module &m)
 
         .def("__mul__", &Tensor::operator*)
 
-        //.def("__matmul__", &Tensor::operator*)
-
         .def("__div__", &Tensor::operator/)
 
         .def("__repr__", &Tensor::print_val)
@@ -56,6 +106,7 @@ void bind_tensor(py::module &m)
         .def_property_readonly("dtype", &Tensor::type)
 
         .def_property_readonly("shape", &Tensor::shape);
+
     m.def("arange", [&](py::object start, py::object step, py::object end)
           {
             DType st_d = infer_types(start,true);
@@ -70,4 +121,7 @@ void bind_tensor(py::module &m)
                 return Tensor::arange(n_st, n_ste, n_end, max_type);
             });
             return res; });
+    m.def("to_numpy", &Tensor::to_numpy);
+    m.def("einsum", [&](const Tensor &a, const Tensor &b, py::object axes_a, py::object axes_b)
+          { return einsum_(a, b, axes_a.cast<std::vector<int>>(), axes_b.cast<std::vector<int>>()); });
 }

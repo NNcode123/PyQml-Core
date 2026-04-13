@@ -1,0 +1,7 @@
+# ninja log v6
+8	3055	7978114389094441	CMakeFiles/test.dir/test.cpp.obj	ef70001b974ed73
+3057	3344	7978114419498275	test.exe	f4aa1ada4ea0143c
+16	5546	7978114389174635	CMakeFiles/pyqmlcore.dir/C_/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/bindings/pybind_module.cpp.obj	6ae7a5f2e832d5e8
+31	6051	7978114389312476	CMakeFiles/pyqmlcore.dir/C_/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/bindings/dtype_bindings.cpp.obj	a636ae90c2fe0471
+24	8221	7978114389252309	CMakeFiles/pyqmlcore.dir/C_/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/bindings/tensor_init.cpp.obj	2533670dd558cff3
+8221	9348	7978114471231041	pyqmlcore.cp313-win_amd64.pyd	83d85cbb4539f74a

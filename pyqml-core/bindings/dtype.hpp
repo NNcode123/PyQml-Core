@@ -1,8 +1,5 @@
 #pragma once
-#include <variant>
-#include <tuple>
 #include <cmath>
-#include "bindings.hpp"
 #include "../cpp/src/tensor.hpp"
 
 enum class DType
@@ -28,17 +25,6 @@ enum class OpType
     InnerProd,
     concat
 };
-
-/*
-struct DispatchTable{
-    template <typename ... Types>
-    using Type_list = std::tuple<DType>;
-    using Func = (Tensor *)op(Tensor,Tensor&);
-
-    Type_list q;
-
-}
-*/
 
 template <typename T>
 struct typeDType;
@@ -182,6 +168,3 @@ struct RankToType<5>
 {
     using type = double;
 };
-
-
-

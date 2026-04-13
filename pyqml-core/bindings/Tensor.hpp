@@ -2,64 +2,8 @@
 #include "dtype.hpp"
 #include "bindings.hpp"
 
-template <typename... Ts>
-
-DType inf_dtyp_python(py::dtype dt)
-{
-    DType result;
-    bool found = false;
-    ([&]()
-     { if (!found && dt.is(py::dtype::of<Ts>())){
-            result = typeDType<Ts>::type;
-            found = true;
-        } }(), ...);
-
-    return result;
-}
-
-inline DType infer_types(py::object obj, bool obj_instance)
-{
-    if (obj_instance)
-    {
-        if (py::isinstance<py::int_>(obj))
-        {
-            return DType::Int64;
-        }
-        if (py::isinstance<py::float_>(obj))
-        {
-            return DType::Float64;
-        }
-    }
-    else
-    {
-        if (py::isinstance<py::type>(obj))
-        {
-            py::object bins = py::module_::import("builtins");
-            py::type Ty = py::cast<py::type>(obj);
-            if (obj.is(bins.attr("int")))
-            {
-                return DType::Int64;
-            }
-            if (obj.is(bins.attr("float")))
-            {
-                return DType::Float64;
-            }
-        }
-    }
-    try
-    {
-        return py::cast<DType>(obj);
-    }
-    catch (const py::cast_error &e)
-    {
-        throw std::runtime_error("Unsupported object type");
-    }
-    throw std::runtime_error("Unsupported object type");
-}
-
 class Tensor
 {
-    // std::variant<tensor<int64_t>, tensor<int32_t>, tensor<int16_t>, tensor<int8_t>, tensor<float>, tensor<double>> tens;
 
     std::shared_ptr<void> data;
     std::vector<size_t> shape_;
@@ -102,11 +46,8 @@ public:
     Tensor(const std::shared_ptr<T[]> &owner, std::vector<size_t> dim, DType type) : shape_(dim),
                                                                                      offset(0), dtype(type)
     {
-
-        data = std::static_pointer_cast<void>(owner);
-        strides_.resize(dim.size());
-
         int64_t stride = 1;
+        strides_.resize(dim.size());
         for (int j = dim.size() - 1; j >= 0; --j)
         {
             strides_[j] = stride;
@@ -118,18 +59,22 @@ public:
             v *= val;
         }
         size = v;
+        data = std::static_pointer_cast<void>(owner);
+        // data  = std::static_pointer_cast<void>(cuda_alloc<T>(size));
     }
 
     template <typename T>
     Tensor(const std::shared_ptr<T[]> &owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type)
     {
-        data = std::static_pointer_cast<void>(owner);
+
         size_t v = 1;
         for (const auto &val : dim)
         {
             v *= val;
         }
         size = v;
+        data = std::static_pointer_cast<void>(owner);
+       
     }
 
     template <typename T>
@@ -178,7 +123,7 @@ public:
     }
 
     template <typename Op>
-    Tensor dispatchOp(const Tensor &a, const Tensor &b, Op &&opy) const
+    static Tensor dispatchOp(const Tensor &a, const Tensor &b, Op &&opy)
     {
         return Tensor::disp_2(a.dtype, b.dtype, [&](auto t1, auto t2)
                               {
@@ -191,7 +136,7 @@ public:
         tensor<T> a_tens(data_a, a.shape_, a.strides_, a.offset, a.size);
         tensor<U> b_tens(data_b, b.shape_, b.strides_, b.offset, b.size);
         DType result = (static_cast<int>(a.dtype) > static_cast<int>(b.dtype)) ? a.dtype: b.dtype;
-        auto tens = binary_ops(a_tens,b_tens, opy);
+        auto tens = opy(a_tens, b_tens);
         return Tensor(tens.owner(), tens.dim(), result); });
     }
 
@@ -274,7 +219,7 @@ public:
                                     R strt = static_cast<R>(start);
                                     R stp = static_cast<R>(step);
                                     std::shared_ptr<R[]> out(new R[size]);
-                                    R __restrict*raw = out.get();
+                                    R *raw = out.get();
                                     for (size_t j = 0; j < size; ++j)
                                     {
                                         *raw++ = strt;
@@ -292,22 +237,26 @@ public:
 
     Tensor operator+(const Tensor &other) const
     {
-        return dispatchOp(*this, other, std::plus<>());
+        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
+                          { return binary_ops(t_1, t_2, std::plus<>()); });
     }
 
     Tensor operator-(const Tensor &other) const
     {
-        return dispatchOp(*this, other, std::minus<>());
+        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
+                          { return binary_ops(t_1, t_2, std::minus<>()); });
     }
 
     Tensor operator*(const Tensor &other) const
     {
-        return dispatchOp(*this, other, std::multiplies<>());
+        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
+                          { return binary_ops(t_1, t_2, std::multiplies<>()); });
     }
 
     Tensor operator/(const Tensor &other) const
     {
-        return dispatchOp(*this, other, std::divides<>());
+        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
+                          { return binary_ops(t_1, t_2, std::divides<>()); });
     }
 
     Tensor astype(DType new_type, bool h) const
@@ -335,9 +284,39 @@ public:
     Tensor slice_view(const Slice &...slice_obj)
     {
         return getTens(dtype, [&](auto &tens)
-                       { 
-                        
-                        return tens.slice_view(slice_obj...); });
+                       { return tens.slice_view(slice_obj...); });
+    }
+
+    py::array to_numpy()
+    {
+        return Tensor::dispatch(dtype, [&](auto val)
+                                {
+        using R = std::decay_t<decltype(val)>;
+
+        
+        std::shared_ptr<R[]> new_ptr(data, static_cast<R*>(data.get()));
+
+        tensor<R> tens_view(new_ptr, shape_, strides_, offset, size);
+        tensor<R> new_tens = tens_view.copy();
+
+        std::vector<int64_t> numpy_strides = new_tens.strides();
+        std::transform(
+            numpy_strides.begin(),
+            numpy_strides.end(),
+            numpy_strides.begin(),
+            [](auto s) { return s * sizeof(R); }
+        );
+
+        return py::array(
+            py::buffer_info(
+                new_tens.data(),                         // ptr
+                sizeof(R),                               // itemsize
+                py::format_descriptor<R>::format(),      // dtype
+                new_tens.ndim(),                         // ndim
+                new_tens.shape(),                        // shape
+                numpy_strides                            // strides (bytes)
+            )
+        ); });
     }
 
     DType type() const
@@ -346,74 +325,6 @@ public:
     }
 
     std::vector<size_t> shape() const { return shape_; }
-
-    /*
-
-    DType dtype;
-    template <typename T>
-    Tensor(tensor<T> &&tqn, DType typ) : tens(tqn), dtype(typ) {}
-    std::vector<size_t> shape()
-    {
-        return std::visit([](const auto &t)
-                          { return t.shape(); }, tens);
-    }
-
-    /*
-    size_t ndim()
-    {
-        return std::visit([](const auto &t)
-                          { return t.ndim(); }, tens);
-    }
-                          */
-
-    /*
-    const Tensor &operator+(const Tensor &other) const
-    {
-        return std::visit([&](auto &&t1, auto &&t2) -> Tensor
-                          {
-        using T1 = std::decay_t<decltype(t1)>;
-        using T2 = std::decay_t<decltype(t2)>;
-
-        using U = T1::Data_type;
-        using V = T2::Data_type;
-
-        using R = RankToType<promote<U, V>::rank>::type;
-
-        auto add = [](R a, R b) { return a + b; };
-
-        auto result = binary_ops(t1, t2, add);
-
-        DType res_type = (static_cast<int>(dtype) > static_cast<int>(other.dtype)) ? dtype : other.dtype;
-
-        return Tensor(std::move(result), res_type); }, tens, other.tens);
-    }
-    const Tensor &operator-(const Tensor &other) const
-    {
-        return std::visit([&](auto &&t1, auto &&t2) -> Tensor
-                          {
-        using T1 = std::decay_t<decltype(t1)>;
-        using T2 = std::decay_t<decltype(t2)>;
-
-        using U = T1::Data_type;
-        using V = T2::Data_type;
-a
-        using R = RankToType<promote<U, V>::rank>::type;
-
-        auto add = [](R a, R b) { return a - b; };
-
-        auto result = binary_ops(t1, t2, add);
-
-        DType res_type = (static_cast<int>(dtype) > static_cast<int>(other.dtype)) ? dtype : other.dtype;
-
-        return Tensor(std::move(result), res_type); }, tens, other.tens);
-    }
-    Tensor argmax(int a)
-    {
-    }
-    std::string print_val(std::stringstream &out)
-    {
-        return std::visit([&](auto &&t1)
-                          { return get_str(out, t1); }, tens);
-    }
-    */
 };
+
+#include "Tensor_ops/free_ops.cpp"

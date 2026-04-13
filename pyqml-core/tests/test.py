@@ -1,10 +1,6 @@
 
 import numpy as np
-import sys
 
-
-import os 
-os.add_dll_directory(r"C:\msys64\mingw64\bin")
 
 import pyqmlcore as pyq
 

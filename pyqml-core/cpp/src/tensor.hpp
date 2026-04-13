@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <array>
-// #include <complex.h>
+#include <string>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -10,6 +10,7 @@
 #include <cstring>
 #include <memory>
 #include "tensor_imp_files/itr.hpp"
+#include "tensor_imp_files/cuda_alloc.cu"
 using namespace detail;
 
 using size_t = std::size_t;
@@ -59,9 +60,6 @@ template <typename T>
 class tensor
 {
 
-    static constexpr size_t NDIM = 8;
-    // size_t dim_stack[NDIM];
-    // int64_t strides_stack[NDIM];
     std::shared_ptr<T[]> data_;
     size_t t_size;
     std::vector<size_t> dim_;
@@ -70,15 +68,20 @@ class tensor
 
 public:
     using Data_type = T;
+    static constexpr size_t NDIM = 8;
     explicit tensor() : data_(nullptr), dim_({}) {}
 
-    tensor(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, const size_t &ofst, const size_t &te_size) : data_(buffer), dim_(dims),
-                                                                                                                                                           strides_(strides), offset(ofst), t_size(te_size) {}
+    tensor(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
+           const size_t &ofst, const size_t &te_size) : data_(buffer), dim_(dims),
+                                                        strides_(strides), offset(ofst), t_size(te_size)
+    {
+    }
 
     tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim)
 
     {
         data_ = std::shared_ptr<T[]>(new T[t_size]);
+        // data_ = cuda_alloc<T>(data.size());
         std::move(data.begin(), data.end(), data_.get());
         strides_.resize(dim_.size());
         offset = 0;
@@ -133,7 +136,7 @@ public:
     }
     [[nodiscard]] std::shared_ptr<T[]> owner() const { return data_; }
 
-    [[nodiscard]] T at(const std::vector<size_t> &pos) const
+    [[nodiscard]] T at(const std::vector<int> &pos) const
     {
         size_t index, s_index;
         s_index = 0;
@@ -148,7 +151,7 @@ public:
     template <typename... Indices>
     [[nodiscard]] T operator()(Indices... indices) const
     {
-        std::vector<size_t> pos = {indices...};
+        std::vector<int> pos = {indices...};
         return at(pos);
     }
 
@@ -177,6 +180,7 @@ public:
     tensor<T> min(int axis) const;
     template <typename R>
     tensor<R> astype(bool copy = false) const;
+    [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const;
     // tensor<T> argmax(int u);
     /*
     tensor<T> sin() const;
@@ -203,37 +207,6 @@ public:
         return tensor<T>(new_data_, dim_);
     }
         */
-
-    [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const
-    {
-        std::vector<size_t> new_dim = dim_;
-        new_dim.insert(new_dim.end(), other.dim_.begin(), other.dim_.end());
-
-        const auto A = copy();
-        const auto B = other.copy();
-
-        const size_t this_size = size();
-        const size_t other_size = other.size();
-        const T *__restrict A_data = A.data_.get();
-        const T *__restrict B_data = B.data_.get();
-
-        std::shared_ptr<T[]> new_data(new T[this_size * other_size], std::default_delete<T[]>());
-        const T *__restrict new_data_ = new_data.get();
-
-        for (int64_t i = 0; i < this_size; ++i)
-        {
-
-            const T a_val = A_data[i];
-
-            for (int64_t j = 0; j < other_size; ++j)
-            {
-                new_data_[j] = a_val * B_data[j];
-            }
-            new_data_ += other_size;
-        }
-
-        return tensor<T>(std::move(new_data), new_dim);
-    }
 
     tensor<T> &matrixPow(const size_t &val);
     tensor<T> &elemPow(const size_t &val);

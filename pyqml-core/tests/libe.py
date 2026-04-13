@@ -17,8 +17,6 @@ def time_block(name, fn):
 
 
 
-os.add_dll_directory(r"C:\msys64\mingw64\bin")
-
 import pyqmlcore as pyq
 print(pyq.float32)
 li2 = [i*0.2 for i in range(0,100)]
@@ -32,36 +30,37 @@ li4 = [100,100,100]
 #print(tens_list)
 
 #pyqml tensor and astype funcs 
-tens = pyq.arange(0,40,.2).astype(int)
-tens = tens 
-print(tens)
-print(tens.dtype)
+
 
 tens_1 = pyq.Tensor(li3,dim = [100,100,100], type = pyq.int64)
-tens_1 = tens_1.astype(float)
+tens = pyq.Tensor(li2, li1)
+numpy_tensor = pyq.to_numpy(tens_1)
+
+
+print(numpy_tensor)
+
 tens_3 = tens+tens_1
-print(tens_1.dtype)
-print(tens_3.dtype)
-print(tens_3)
+tens_3 = tens*tens_1
 
-tens_4 =pyq.arange(0,50,1)
-print(tens_4.dtype)
-print(tens_4)
-
-#tens_3 = tens+tens_1
-#print(tens.shape)
-#print(tens.dtype)
+tensqy = tens+tens
+print(tens)
+print(tensqy)
 
 
 
+print(tens.shape)
+print(tens.dtype)
+
+
+
+
+
+ 
 def add():
     tens_2 = pyq.arange(0,1000000,1) + pyq.arange(0,1000000,1)
   
     #tens_4 = tens*tens_1
     #tens_5 = tens/tens_1
-    
-    
- 
 
 
 def add_numpy():

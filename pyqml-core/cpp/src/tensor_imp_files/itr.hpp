@@ -92,6 +92,7 @@ namespace detail
 
         while (axes_a[end_index].count == axes_a[end_index].dim)
         {
+
             a_data -= axes_a[end_index].reset_val;
             b_data -= axes_b[end_index].reset_val;
             axes_a[end_index].count = 1;
@@ -107,13 +108,8 @@ namespace detail
 
         a_data += axes_a[end_index].advance;
         b_data += axes_b[end_index].advance;
+        
     }
 
-}
 
-
-namespace gpu_detail{
-
-
-    
 }

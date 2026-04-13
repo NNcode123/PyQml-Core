@@ -8,6 +8,4 @@ PYBIND11_MODULE(pyqmlcore, m)
 
     bind_tensor(m);
     bind_dtype(m);
-
-    
 }

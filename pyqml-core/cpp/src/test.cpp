@@ -12,11 +12,11 @@ template <typename F>
 void time_block(const std::string &name, F &&fn)
 {
     auto t0 = std::chrono::high_resolution_clock::now();
-    for (size_t j = 0; j < 500; ++j)
+    for (size_t j = 0; j < 2; ++j)
         fn();
     auto t1 = std::chrono::high_resolution_clock::now();
     std::cout << name << ": "
-              << std::chrono::duration<double>(t1 - t0).count() / 500
+              << std::chrono::duration<double>(t1 - t0).count() / 2
               << " sec\n";
 }
 
@@ -928,8 +928,8 @@ int main()
         Slice(10, 40, 1)
     ).copy();
 
-    volatile int sink = big_slice_copy(0,0,0);
-    (void)sink; });
+    //volatile int32_t sink = big_slice_copy(0,0,0);
+   ; });
 
     // ============================================================
     // 3. Massive SLICE_VIEW (no copy)
@@ -937,14 +937,13 @@ int main()
 
     time_block("Massive slice_view", [&]()
                {
-    auto big_slice_view = massive_tensor.slice_view(
-        Slice(-1, -101, -1),
-        Slice(0, 200, 2),
-        Slice(10, 40, 1)
-    );
+                   auto big_slice_view = massive_tensor.slice_view(
+                       Slice(-1, -101, -1),
+                       Slice(0, 200, 2),
+                       Slice(10, 40, 1));
 
-    volatile int sink = big_slice_view(0,0,0);
-    (void)sink; });
+                   // volatile int sink = big_slice_view(0,0,0);
+               });
 
     // ============================================================
     // 4. Repeated View → Copy → View Chain
@@ -952,26 +951,24 @@ int main()
 
     time_block("Repeated view/copy chaining", [&]()
                {
-    tensor<int32_t> v1 = massive_tensor.slice_view(
-        Slice(-1, -151, -1),
-        Slice(0, 200, 3),
-        Slice(0, 50)
-    );
+                   tensor<int32_t> v1 = massive_tensor.slice_view(
+                       Slice(-1, -151, -1),
+                       Slice(0, 200, 3),
+                       Slice(0, 50));
 
-    tensor<int32_t> c2 = v1.slice_view(
-        Slice(10, 80),
-        Slice(-1, -40, -2),
-        Slice(5, 30)
-    ).copy();
+                   tensor<int32_t> c2 = v1.slice_view(
+                                              Slice(10, 80),
+                                              Slice(-1, -40, -2),
+                                              Slice(5, 30))
+                                            .copy();
 
-    tensor<int32_t> v3 = c2.slice_view(
-        Slice(-1, -20, -1),
-        Slice(0, 10),
-        Slice(-1, -10, -1)
-    );
+                   tensor<int32_t> v3 = c2.slice_view(
+                       Slice(-1, -20, -1),
+                       Slice(0, 10),
+                       Slice(-1, -10, -1));
 
-    volatile int sink = v3(0,0,0);
-    (void)sink; });
+                   // volatile int sink = v3(0,0,0);
+               });
 
     std::vector<size_t> dims = {1000, 1000};
     std::vector<size_t> dims2 = {1, 1000};
@@ -994,7 +991,7 @@ int main()
     // ============================================================
     // Broadcast Test
     // ============================================================
-
+/*
     constexpr size_t BA = 512;
     constexpr size_t BB = 256;
     constexpr size_t BC = 64;
@@ -1023,8 +1020,9 @@ int main()
                {
     auto C = A - B;
 
-    volatile int sink = C(0,0,0);
+    volatile int_fast32_t sink = C(0,0,0);
     (void)sink; });
+    */
 
     // ============================================================
     // Slice view broadcasting test
@@ -1038,9 +1036,8 @@ int main()
 
     tensor<double> bigA(data_big_A, SIZE_A, {10, 40, 4});
 
-   // tensor<float> uq = bigA.template astype<float>();
-   // std::cout << uq << std::endl;
-
+    // tensor<float> uq = bigA.template astype<float>();
+    // std::cout << uq << std::endl;
 
     constexpr size_t SIZE_B = 40 * 20;
     auto data_big_B = std::shared_ptr<double[]>(new double[SIZE_B]);
@@ -1065,8 +1062,8 @@ int main()
         Slice(0, 2));
 
     std::cout << "Shapes:\n";
-    std::cout << "A: (2,5,4,2)\n";
-    std::cout << "B: (2,5)\n\n";
+    std::cout << "A: (1,5,2)\n";
+    std::cout << "B: (5,1,2)\n\n";
 
     // ============================================================
     // Broadcast operations
@@ -1085,4 +1082,68 @@ int main()
 
     std::cout << "C_V" << C_V << "\n\n";
     std::cout << "D_V" << D_V << "\n\n";
+    // dimensions
+    size_t M = 4; // corresponds to former D0 (A free)
+    size_t K = 3; // corresponds to former D1 (contract)
+    size_t N = 5; // corresponds to former D2 (contract)
+    size_t P = 6; // corresponds to former D3 (B free)
+
+    // sizes
+    size_t size_left = M * K * N;
+    size_t size_right = N * K * P;
+
+    // allocate left tensor (A)
+    auto left_data = std::shared_ptr<int32_t[]>(new int32_t[size_left]);
+    for (size_t idx = 0; idx < size_left; ++idx)
+        left_data[idx] = idx % 97;
+
+    std::vector<size_t> left_shape = {M, K, N};
+    tensor<int32_t> left_tensor(left_data, size_left, left_shape);
+
+    // allocate right tensor (B)
+    auto right_data = std::shared_ptr<int32_t[]>(new int32_t[size_right]);
+    for (size_t idx = 0; idx < size_right; ++idx)
+        right_data[idx] = (idx*3) % 89;
+
+    std::vector<size_t> right_shape = {N, K, P};
+    tensor<int32_t> right_tensor(right_data, size_right, right_shape);
+
+    // contraction axes
+    std::vector<int> contract_left = {1, 2};  // K, N
+    std::vector<int> contract_right = {1, 0}; // K, N (reordered)
+
+    // run contraction
+    auto result = einsum(left_tensor, right_tensor, contract_left, contract_right);
+    std::cout << result;
+
+    size_t rows_A = 2; // i
+    size_t shared = 3; // j
+    size_t cols_B = 2; // k
+
+    // sizes
+    size_t size_A = rows_A * shared;
+    size_t size_B = shared * cols_B;
+
+    // allocate A
+    auto data_A = std::shared_ptr<int32_t[]>(new int32_t[size_A]);
+    for (size_t i = 0; i < size_A; ++i)
+        data_A[i] = i + 1; // 1,2,3,...
+
+    std::vector<size_t> shape_A = {rows_A, shared};
+    tensor<int32_t> Ax(data_A, size_A, shape_A);
+
+    // allocate B
+    auto data_B = std::shared_ptr<int32_t[]>(new int32_t[size_B]);
+    for (size_t i = 0; i < size_B; ++i)
+        data_B[i] = (i + 1); // 1,2,3,...
+
+    std::vector<size_t> shape_B = {shared, cols_B};
+    tensor<int32_t> Bx(data_B, size_B, shape_B);
+
+    // contract j
+    std::vector<int> axes_A = {1}; // j
+    std::vector<int> axes_B = {0}; // j
+
+    auto res = einsum(Ax, Bx, axes_A, axes_B);
+    std::cout << res;
 }

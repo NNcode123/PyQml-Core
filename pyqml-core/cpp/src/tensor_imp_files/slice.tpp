@@ -233,7 +233,6 @@ template <typename T>
     const T *__restrict src = data_.get();
     std::shared_ptr<T[]> new_data(new T[size()], std::default_delete<T[]>());
     T *__restrict data = new_data.get();
-
     src += offset;
     std::vector<size_t> counts(dim_.size(), 1);
     const auto [cont_size, cont_offset] = collapse_size();
