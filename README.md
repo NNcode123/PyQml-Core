@@ -72,9 +72,9 @@ $$
 
 ### Benchmarking 
 
-Basic operations, including the standard-elementwise operations and contraction/einsum routines, were benchmarked against cannoncial Numpy implementations. 
+Basic operations, including the standard elementwise operations and contraction/einsum routines, were benchmarked against canonical Numpy implementations. 
 
-Results demonstrated that this implementation is in the same performance neighborhood with Numpy for basic routines. While Numpy remains highly optimized for more complex pipelines, my current design supports a strong baseline for performance and correctness.
+Results demonstrated that this implementation is in the same performance neighborhood as Numpy for basic routines. While Numpy remains highly optimized for more complex pipelines, my current design supports a strong baseline for performance and correctness.
 
 ### Benchmark Results 
 
