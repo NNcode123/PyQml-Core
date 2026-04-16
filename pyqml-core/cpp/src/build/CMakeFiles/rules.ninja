@@ -123,7 +123,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = C:\msys64\mingw64\bin\cmake.exe --regenerate-during-build -SC:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src -BC:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\build
+  command = C:\msys64\mingw64\bin\cmake.exe --regenerate-during-build -SC:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src -BC:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\buiild
   description = Re-running CMake...
   generator = 1
 

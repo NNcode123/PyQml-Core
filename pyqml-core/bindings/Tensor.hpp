@@ -309,7 +309,7 @@ public:
 
         return py::array(
             py::buffer_info(
-                new_tens.data(),                         // ptr
+                new_tens.data()+new_tens.ofst(),                         // ptr
                 sizeof(R),                               // itemsize
                 py::format_descriptor<R>::format(),      // dtype
                 new_tens.ndim(),                         // ndim

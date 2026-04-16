@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/cmake_install.cmake"
+		"C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/buiild/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

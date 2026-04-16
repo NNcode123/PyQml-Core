@@ -24684,7 +24684,7 @@ return require;
 #line 935
 } 
 #line 1 "CMakeCUDACompilerId.cudafe1.stub.c"
-#define _NV_ANON_NAMESPACE _GLOBAL__N__ec307246_22_CMakeCUDACompilerId_cu_bd57c623
+#define _NV_ANON_NAMESPACE _GLOBAL__N__383c386b_22_CMakeCUDACompilerId_cu_bd57c623
 #ifdef _NV_ANON_NAMESPACE
 #endif
 #pragma pack()

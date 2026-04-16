@@ -1,295 +1,104 @@
 
 import numpy as np
-
-
-import pyqmlcore as pyq
-
-
-tens_1 = pyq.Tensor([3,4,5],[3,1])
-tens_2 =tens_1
-print(tens_2)
-
-
-
-
-
-
-
-
 import time
+import pyqmlcore as pyq
+import matplotlib.pyplot as plt
 
 def time_block(name, fn):
     t0 = time.perf_counter()
-    for i in range (0, 1000):
-        out = fn()   
+    for i in range(0, 100):
+        out = fn()
     t1 = time.perf_counter()
-    print(f"{name}: {(t1 - t0)/1000:.6f} sec")
-    return out
+    print(f"{name}: {(t1 - t0)/100:.6f} sec")
+    return (t1 - t0)/100
 
+def pyq_test(shape_1, shape_2, op):
+    size_1 = np.prod(shape_1)
+    size_2 = np.prod(shape_2)
 
+    data_1 = [i % 97 for i in range(size_1)]
+    data_2 = [(i * 3) % 89 for i in range(size_2)]
 
+    t1 = pyq.Tensor(data_1, dim=list(shape_1))
+    t2 = pyq.Tensor(data_2, dim=list(shape_2))
 
+    if op == "add":
+        return t1 + t2
+    if op == "sub":
+        return t1 - t2
+    if op == "mul":
+        return t1 * t2
+    if op == "einsum":
+        return pyq.einsum(t1, t2, [len(shape_1)-1], [len(shape_2)-2])
 
-# -------------------------------
-# Base tensors (similar sizes)
-# -------------------------------
-A = np.arange(2000, dtype=np.int32).reshape(200, 10)
-B = np.arange(1500, dtype=np.int32).reshape(150, 10)
-C = np.arange(500,  dtype=np.int32).reshape(50, 10)
+def numpy_test(shape_1, shape_2, op):
+    a = np.arange(np.prod(shape_1)).reshape(shape_1) % 97
+    b = (np.arange(np.prod(shape_2)) * 3 % 89).reshape(shape_2)
 
-# -------------------------------
-# Create pathological *views*
-# (negative strides, slicing)
-# -------------------------------
-vA = A[::-1, :]          # reverse axis 0
-vB = B[:, ::-1]          # reverse axis 1
-vC = C[::1, :]           # normal view (kept for comparison)
+    if op == "add":
+        return a + b
+    if op == "sub":
+        return a - b
+    if op == "mul":
+        return a * b
+    if op == "einsum":
+        return np.matmul(a, b)
 
-# sanity check: these are views
-assert not vA.flags['C_CONTIGUOUS']
-assert not vB.flags['C_CONTIGUOUS']
+ops = ["add", "sub", "mul"]
 
-print("vA contiguous?", vA.flags['C_CONTIGUOUS'])
-print("vB contiguous?", vB.flags['C_CONTIGUOUS'])
-print("vC contiguous?", vC.flags['C_CONTIGUOUS'])
+broadcast_shapes = [
+    ((64,64,64), (1,64,1)),
+    ((128,128,64), (1,128,1)),
+    ((128,128,128), (1,128,1))
+]
 
+einsum_shapes = [
+    ((64,64), (64,64)),
+    ((128,128), (128,128)),
+    ((256,256), (256,256))
+]
 
-# -------------------------------
-# Triple tensor product
-# -------------------------------
-"""
-def triple_tensor_product():
-    # First outer product
-    T1 = np.multiply.outer(vA, vB)
-    # Second outer product
-    T2 = np.multiply.outer(T1, vC)
-    return T2
+results_pyq = []
+results_np = []
+labels = []
 
+for op in ops:
+    for s1, s2 in broadcast_shapes:
+        pyq_time = time_block(f"pyq_{op}_{s1}", lambda: pyq_test(s1, s2, op))
+        np_time = time_block(f"np_{op}_{s1}", lambda: numpy_test(s1, s2, op))
 
-# -------------------------------
-# Timing
-# -------------------------------
-T = time_block("Triple tensor product (NumPy)", triple_tensor_product)
-"""
+        pyq_res = pyq.to_numpy(pyq_test(s1, s2, op))
+        np_res = numpy_test(s1, s2, op)
 
-# Touch one element so Python can't optimize it away
-#print("Sample:", T[0, 0, 0, 0, 0, 0])
+        assert np.allclose(pyq_res, np_res)
 
+        results_pyq.append(pyq_time)
+        results_np.append(np_time)
+        labels.append(f"{op}_{s1}")
 
-D0 = 200
-D1 = 200
-D2 = 50
-TOTAL_SIZE = D0 * D1 * D2
+for s1, s2 in einsum_shapes:
+    pyq_time = time_block(f"pyq_einsum_{s1}", lambda: pyq_test(s1, s2, "einsum"))
+    np_time = time_block(f"np_einsum_{s1}", lambda: numpy_test(s1, s2, "einsum"))
 
-massive_data = np.arange(TOTAL_SIZE, dtype=np.int32) % 97
-massive_tensor = massive_data.reshape(D0, D1, D2)
+    pyq_res = pyq.to_numpy(pyq_test(s1, s2, "einsum"))
+    np_res = numpy_test(s1, s2, "einsum")
 
-print(f"Massive tensor created: {D0} x {D1} x {D2} ({TOTAL_SIZE} elements)\n")
+    assert np.allclose(pyq_res, np_res)
 
+    results_pyq.append(pyq_time)
+    results_np.append(np_time)
+    labels.append(f"einsum_{s1}")
 
-def chained_ops():
-    v1 = massive_tensor[
-        -1:-151:-1,
-        0:200:3,
-        0:50
-    ]                  # view
+x = np.arange(len(labels))
+width = 0.35
 
-    c2 = v1[
-        10:80,
-        -1:-40:-2,
-        5:30
-    ].copy()           # force copy
+plt.figure(figsize=(14,7))
+plt.bar(x - width/2, results_pyq, width, label="pyq")
+plt.bar(x + width/2, results_np, width, label="numpy")
 
-    v3 = c2[
-        -1:-20:-1,
-        0:10,
-        -1:-10:-1
-    ]                  # view again
-
-    _ = v3[0, 0, 0]    # touch
-
-
-time_block("Repeated view/copy chaining", chained_ops)
-
-time_block("Massive slice (copy)", lambda: (
-    lambda x: x[0, 0, 0]  # touch
-)(
-    massive_tensor[
-        -1:-101:-1,   # reverse first 100
-        0:200:2,      # stride
-        10:40:1       # narrow
-    ].copy()          # force deep copy
-))
-
-
-# ============================================================
-# 3. Massive SLICE_VIEW (no copy)
-# ============================================================
-
-time_block("Massive slice_view", lambda: (
-    lambda x: x[0, 0, 0]
-)(
-    massive_tensor[
-        -1:-101:-1,
-        0:200:2,
-        10:40:1
-    ]                  # view only
-))
-
-A = np.arange(200 * 10, dtype=np.int32).reshape(200, 10)
-B = np.arange(150 * 10, dtype=np.int32).reshape(150, 10)
-
-# Warm-up (important for fair timing)
-_ = np.multiply.outer(A, B)
-
-start = time.perf_counter()
-prod = np.multiply.outer(A, B)
-_ = prod[0, 0, 0, 0]   # touch
-end = time.perf_counter()
-
-print("NumPy tensor product time:", end - start)
-print("Result shape:", prod.shape)
-
-X, Y, Z = 256, 256, 64
-TOTAL = X * Y * Z
-
-data = (np.arange(TOTAL, dtype=np.int32) % 97).reshape(X, Y, Z)
-
-print(f"Tensor: {X} x {Y} x {Z} ({TOTAL} elements)")
-
-
-# Warm‑up
-tmp = data[
-    0:X:1,
-    0:Y:2,
-    1:Z:3
-].copy()
-_ = tmp[0,0,0]
-
-# Timed
-time_block("NumPy strided slice + copy", lambda: (
-    lambda x: x[0,0,0]
-)(
-    data[
-        0:X:2,   # contiguous
-        0:Y:4,   # stride 2
-        1:Z:3    # stride 3  ❗ not contiguous
-    ].copy()
-))
-
-def numpy_slice_view_only():
-    v = data[
-        0:X:2,
-        0:Y:2,
-        1:Z:3
-    ]
-    _ = v[0, 0, 0]
-
-time_block("NumPy strided slice_view ONLY", numpy_slice_view_only)
-
-
-
-"""
-D0 = 160
-D1 = 200
-D2 = 100
-D3 = 8
-
-TOTAL_ELEMS = D0 * D1 * D2 * D3
-
-base_data = (np.arange(TOTAL_ELEMS, dtype=np.int32) % 113)
-np_tensor = base_data.reshape(D0, D1, D2, D3)
-
-print(f"Base NumPy tensor: {D0} x {D1} x {D2} x {D3} ({TOTAL_ELEMS} elements)")
-
-# ============================================================
-# Axis 0: RANDOM DISTINCT GATHER [0, 50]
-# ============================================================
-
-rng = np.random.default_rng(123)
-axis0_indices = np.arange(51)
-rng.shuffle(axis0_indices)
-axis0_indices = axis0_indices[:50]     # distinct, unordered
-
-# ============================================================
-# Single pathological slice
-# ============================================================
-# Axis 0: advanced indexing (non-affine gather)
-# Axis 1: negative-stride slice
-# Axis 2: index (dimension drop)
-# Axis 3: strided slice
-#
-# Expected output size:
-#   50 * 100 * 4 = 20,000 elements
-
-def numpy_pathological_slice():
-    out = np_tensor[
-        axis0_indices,        # axis 0 (gather)
-        -1:-201:-2,           # axis 1 (negative stride)
-        axis0_indices,     # axis 2 (index → drop dim)
-        0:8:2                 # axis 3
-    ]
-    # touch one element so it can't be optimized away
-    _ = out[0, 0, 0]
-    return out
-
-result = time_block(
-    "NumPy single pathological slice (gather + slice + index)",
-    numpy_pathological_slice
-)
-
-print("Output shape:", result.shape)
-print("Output size:", result.size)
-print("Contiguous?", result.flags['C_CONTIGUOUS'])
-
-A = np.arange(2000, dtype=np.int32).reshape(200, 10) % 11
-B = np.arange(1500, dtype=np.int32).reshape(150, 10) % 13
-
-def time_block(name, fn):
-    t0 = time.perf_counter()
-    fn()
-    t1 = time.perf_counter()
-    print(f"{name}: {(t1 - t0)*1000:.2f} ms")
-
-time_block("Tensor product", lambda: A[:, None, :, None] * B[None, :, None, :])
-
-# Triple product
-C = np.arange(500, dtype=np.int32).reshape(50, 10) % 7
-time_block(
-    "Triple tensor product",
-    lambda: A[:,None,:,None,None,None]
-          * B[None,:,None,:,None,None]
-          * C[None,None,None,None,:,:]
-)
-"""
-
-X = 512
-Y = 256
-Z = 64
-
-# -----------------------------
-# Create tensors
-# -----------------------------
-A = np.arange(X * Y * Z, dtype=int).reshape(X, Y, Z) % 97
-B = np.arange(Y, dtype=int).reshape(1, Y, 1) % 31
-
-print("Shapes:")
-print("A:", A.shape)
-print("B:", B.shape)
-print()
-
-# -----------------------------
-# Warm-up (important!)
-# -----------------------------
-_ = A + B
-
-# -----------------------------
-# Timed broadcast add
-# -----------------------------
-C = time_block(
-    "Broadcast add (512x256x64) + (1x256x1)",
-    lambda: A - B
-)
-
-# Force usage so it isn't optimized away
-_ = C[0,0,0]
+plt.xticks(x, labels, rotation=45)
+plt.ylabel("Time (sec)")
+plt.title("pyq vs numpy performance (scaled)")
+plt.legend()
+plt.tight_layout()
+plt.savefig("results.png")

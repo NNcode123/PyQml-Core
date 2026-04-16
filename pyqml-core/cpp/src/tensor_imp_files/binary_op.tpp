@@ -1,19 +1,20 @@
 #include "../tensor.hpp"
 #include "itr.hpp"
 #include "set"
+#include "unordered_map"
 #include <functional>
 
 using namespace detail;
 
 template <typename T, typename V>
-struct DualAxisIter
+struct BroadCast
 {
     static constexpr int size = 8;
     AxisIter a_itr[size];
     AxisIter b_itr[size];
     size_t size_output;
     std::vector<size_t> res_dim;
-    DualAxisIter(const tensor<T> &a, const tensor<V> &b, size_t dim_size_max = 0)
+    BroadCast(const tensor<T> &a, const tensor<V> &b, size_t dim_size_max = 0)
     {
         std::vector<size_t> a_dim = a.dim();
         std::vector<size_t> b_dim = b.dim();
@@ -77,7 +78,7 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func op)
 
     using R = decltype(op(std::declval<T>(), std::declval<V>()));
 
-    auto Itr_info = DualAxisIter<T, V>(a, b);
+    auto Itr_info = BroadCast<T, V>(a, b);
     auto &a_itr = Itr_info.a_itr;
     auto &b_itr = Itr_info.b_itr;
 
@@ -110,7 +111,7 @@ template <typename T>
 template <typename Func>
 tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) const
 {
-    auto Itr_info = DualAxisIter<T, T>(a, b);
+    auto Itr_info = BroadCast<T, T>(a, b);
     auto &a_itr = Itr_info.a_itr;
     auto &b_itr = Itr_info.b_itr;
     auto res_dim = std::move(Itr_info.res_dim);
@@ -205,6 +206,7 @@ template <typename U, typename V>
 
 auto matmul(const tensor<U> &tens_1, const tensor<V> &tens_2)
 {
+    return einsum(tens_1, tens_2, {tens_1.size() - 2, tens_1.size() - 1}, {tens_2.size() - 2, tens_2.size() - 1});
 }
 
 template <typename U, typename V>
@@ -218,12 +220,23 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
 
     std::vector<bool> is_contract_a(tensor<U>::NDIM, false);
     std::vector<bool> is_contract_b(tensor<U>::NDIM, false);
+    std::unordered_map<int, int> a_cont_pos;
+    std::unordered_map<int, int> b_cont_pos;
     std::vector<size_t> res_dim;
-
+    int index = 0;
+    int index_1 = 0;
     for (auto x : Axes_a)
+    {
         is_contract_a[x] = true;
+        a_cont_pos[x] = index;
+        ++index;
+    }
     for (auto x : Axes_b)
+    {
         is_contract_b[x] = true;
+        b_cont_pos[x] = index_1;
+        ++index_1;
+    }
 
     auto a_old_dim = tens_1.dim();
     auto a_old_strides = tens_1.strides();
@@ -240,8 +253,7 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
     size_t b_tens_size = 1;
     size_t a_free_index = 0;
     size_t b_free_index = 0;
-    size_t a_cont_index = 0;
-    size_t b_cont_index = 0;
+
     for (int i = 0; i < a_old_dim.size(); i++)
     {
         if (!is_contract_a[i])
@@ -256,7 +268,7 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
         }
         else
         {
-            auto &cur_itr = a_cont[a_cont_index++];
+            auto &cur_itr = a_cont[a_cont_pos[i]];
             cur_itr.dim = a_old_dim[i];
             cur_itr.advance = a_old_strides[i];
             cur_itr.reset_val = (cur_itr.dim - 1) * cur_itr.advance;
@@ -277,7 +289,7 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
         }
         else
         {
-            auto &cur_itr = b_cont[b_cont_index++];
+            auto &cur_itr = b_cont[b_cont_pos[i]];
             cur_itr.dim = b_old_dim[i];
             cur_itr.advance = b_old_strides[i];
             cur_itr.reset_val = (cur_itr.dim - 1) * cur_itr.advance;

@@ -37,6 +37,7 @@ tens = pyq.Tensor(li2, li1)
 numpy_tensor = pyq.to_numpy(tens_1)
 
 
+
 print(numpy_tensor)
 
 tens_3 = tens+tens_1

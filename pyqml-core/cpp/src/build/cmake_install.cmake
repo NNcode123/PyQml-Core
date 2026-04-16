@@ -35,7 +35,7 @@ endif()
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/install_local_manifest.txt"
+  file(WRITE "C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/buiild/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -51,6 +51,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/buiild/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

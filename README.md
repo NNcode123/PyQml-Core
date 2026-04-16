@@ -23,10 +23,15 @@ pyqml-core/
 ├── tests/
 └── README.md
 ```
-is:
+
+### Memory Layout 
+
+The tensor uses **row-major (C-style)** memory layout, meaning indices are mapped linearly as:
+
+
 
 $$
-\text{index} = i \cdot (d_2 d_3) + j \cdot d_3 + k
+\text{index(i,j,k)} = i \cdot (d_2 d_3) + j \cdot d_3 + k
 $$
 
 ---
@@ -64,3 +69,22 @@ $$
   $$
 
 ---
+
+### Benchmarking 
+
+Basic operations, including the standard-elementwise operations and contraction/einsum routines, were benchmarked against cannoncial Numpy implementations. 
+
+Results demonstrated that this implementation is in the same performance neighborhood with Numpy for basic routines. While Numpy remains highly optimized for more complex pipelines, my current design supports a strong baseline for performance and correctness.
+
+### Benchmark Results 
+
+---
+
+Performance visualizations can be found in:
+
+```text
+tests/results.png
+```
+
+
+This file contains plots comparing runtime across different tensor sizes and operations.

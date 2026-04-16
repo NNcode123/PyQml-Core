@@ -1,1 +1,0 @@
-from .pyqmlcore import *

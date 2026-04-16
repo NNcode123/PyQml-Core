@@ -20,7 +20,7 @@ np_B = np.array(li2, dtype=np.int64).reshape(D0, D1, D2)
 # 🔹 elementwise tests
 # -----------------------------
 add_pyq = tens_1 + tens_2
-mul_pyq = tens_1 * tens_2
+mul_pyq = tens_1 / tens_2
 
 print("Add correct:",
       np.allclose(pyq.to_numpy(add_pyq), np_A + np_B))
@@ -36,7 +36,7 @@ axes_1 = [1, 2]
 axes_2 = [1, 2]
 
 res_pyq = pyq.einsum(tens_1, tens_2, axes_1, axes_2)
-res_np  = np.einsum('ijk,ijk->i', np_A, np_B)
+res_np  = np.einsum('ijk,qjk->iq', np_A, np_B)
 
 print("Einsum test 1 correct:",
       np.allclose(pyq.to_numpy(res_pyq), res_np))
