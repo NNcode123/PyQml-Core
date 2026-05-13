@@ -1,5 +1,7 @@
 #pragma once
 #include "bindings.hpp"
+
+
 template <typename... Ts>
 
 DType inf_dtyp_python(py::dtype dt)
@@ -12,7 +14,11 @@ DType inf_dtyp_python(py::dtype dt)
             found = true;
         } }(), ...);
 
-    return result;
+    if (found)
+        return result; 
+    
+    throw std::runtime_error("Unsupported object type");
+    
 }
 
 inline DType infer_types(py::object obj, bool obj_instance)

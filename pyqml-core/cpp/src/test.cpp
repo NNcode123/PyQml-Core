@@ -991,38 +991,38 @@ int main()
     // ============================================================
     // Broadcast Test
     // ============================================================
-/*
-    constexpr size_t BA = 512;
-    constexpr size_t BB = 256;
-    constexpr size_t BC = 64;
+    /*
+        constexpr size_t BA = 512;
+        constexpr size_t BB = 256;
+        constexpr size_t BC = 64;
 
-    constexpr size_t TOTAL_A = BA * BB * BC;
+        constexpr size_t TOTAL_A = BA * BB * BC;
 
-    auto dataA = std::shared_ptr<int_fast32_t[]>(new int_fast32_t[TOTAL_A]);
+        auto dataA = std::shared_ptr<int_fast32_t[]>(new int_fast32_t[TOTAL_A]);
 
-    for (size_t i = 0; i < TOTAL_A; ++i)
-        dataA[i] = int_fast32_t(i % 113);
+        for (size_t i = 0; i < TOTAL_A; ++i)
+            dataA[i] = int_fast32_t(i % 113);
 
-    tensor<int_fast32_t> A(dataA, TOTAL_A, {BA, BB, BC});
+        tensor<int_fast32_t> A(dataA, TOTAL_A, {BA, BB, BC});
 
-    auto dataB = std::shared_ptr<int_fast32_t[]>(new int_fast32_t[BB]);
+        auto dataB = std::shared_ptr<int_fast32_t[]>(new int_fast32_t[BB]);
 
-    for (size_t i = 0; i < BB; ++i)
-        dataB[i] = int_fast32_t(i % 17);
+        for (size_t i = 0; i < BB; ++i)
+            dataB[i] = int_fast32_t(i % 17);
 
-    tensor<int_fast32_t> B(dataB, BB, {1, BB, 1});
+        tensor<int_fast32_t> B(dataB, BB, {1, BB, 1});
 
-    std::cout << "Broadcast test shapes:\n";
-    std::cout << "A: 512 x 256 x 64\n";
-    std::cout << "B: 1 x 256 x 1\n\n";
+        std::cout << "Broadcast test shapes:\n";
+        std::cout << "A: 512 x 256 x 64\n";
+        std::cout << "B: 1 x 256 x 1\n\n";
 
-    time_block("Broadcast add (512x256x64) + (1x256x1)", [&]()
-               {
-    auto C = A - B;
+        time_block("Broadcast add (512x256x64) + (1x256x1)", [&]()
+                   {
+        auto C = A - B;
 
-    volatile int_fast32_t sink = C(0,0,0);
-    (void)sink; });
-    */
+        volatile int_fast32_t sink = C(0,0,0);
+        (void)sink; });
+        */
 
     // ============================================================
     // Slice view broadcasting test
@@ -1103,7 +1103,7 @@ int main()
     // allocate right tensor (B)
     auto right_data = std::shared_ptr<int32_t[]>(new int32_t[size_right]);
     for (size_t idx = 0; idx < size_right; ++idx)
-        right_data[idx] = (idx*3) % 89;
+        right_data[idx] = (idx * 3) % 89;
 
     std::vector<size_t> right_shape = {N, K, P};
     tensor<int32_t> right_tensor(right_data, size_right, right_shape);
@@ -1146,4 +1146,28 @@ int main()
 
     auto res = einsum(Ax, Bx, axes_A, axes_B);
     std::cout << res;
+
+    std::cout << "\n=== CONCAT TEST 2 (axis = middle) ===\n";
+
+    // A: (2, 3, 4)
+    auto data_A2 = std::shared_ptr<int[]>(new int[2 * 3 * 4]);
+    for (int i = 0; i < 24; ++i)
+        data_A2[i] = i;
+
+    tensor<int> A2(data_A2, 24, {2, 3, 4});
+
+    // B: (2, 5, 4)
+    auto data_B2 = std::shared_ptr<int[]>(new int[2 * 5 * 4]);
+    for (int i = 0; i < 40; ++i)
+        data_B2[i] = 100 + i;
+
+    tensor<int> B2(data_B2, 40, {2, 5, 4});
+
+    // concat along axis 1
+    auto C2 = concat<int,int,int>(A2, B2, 1);
+
+    std::cout << "Expected shape: (2, 8, 4)\n";
+    std::cout << C2 << "\n";
+    std::cout << A2 << "\n";
+    std::cout << B2 << "\n";
 }

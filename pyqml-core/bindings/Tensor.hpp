@@ -1,6 +1,7 @@
 #pragma once
 #include "dtype.hpp"
 #include "bindings.hpp"
+#include "src/tensor.hpp"
 
 class Tensor
 {
@@ -74,7 +75,6 @@ public:
         }
         size = v;
         data = std::static_pointer_cast<void>(owner);
-       
     }
 
     template <typename T>

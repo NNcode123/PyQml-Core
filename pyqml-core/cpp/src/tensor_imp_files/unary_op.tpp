@@ -1,10 +1,11 @@
 #include "../tensor.hpp"
 #include <type_traits>
+#include <cmath>
 
 template <typename T>
 template <typename ElmOp>
 
-tensor<T> tensor<T>::reduce_op(int a, ElmOp op) const
+tensor<T> tensor<T>::reduce_op(int a, ElmOp &&op) const
 {
     AxisIter itr[NDIM];
     size_t size_output = 1;
@@ -53,6 +54,90 @@ tensor<T> tensor<T>::reduce_op(int a, ElmOp op) const
 }
 
 template <typename T>
+template <typename ElmOp>
+T tensor<T>::reduce_op(ElmOp &&op)
+{
+    T res = 0;
+    const T *__restrict data = data_.get() + offset;
+    if is_contiguous ()
+    {
+        for (size_t i = 0; i < t_size; ++i)
+        {
+            res = op(res, *data++);
+        }
+    }
+    else
+    {
+        AxisIter itr[tensor<T>::NDIM];
+        AxisIter itr[NDIM];
+        size_t out_ind = dim_.size()-1;
+        for (size_t j = 0; j < dim_.size(); ++j)
+        {
+            itr[j].advance = strides_[j];
+            itr[j].reset_val = strides_[j] * (dim_[j] - 1);
+            itr[j].dim = dim_[j];
+        }   
+        for (size_t i = 0; i < t_size; ++i)
+        {
+            res = op(res, *data);
+            advance(itr, 0, out_ind, data);
+        }
+    }
+    return res;
+}
+
+template <typename T>
+template <typename ElmOp>
+tensor<T> tensor<T>::apply_op(ElmOp &&op)
+{
+    T res = 0;
+    std::vector<size_t> n_shp = dim_;
+    size_t size = t_size;
+    std::shared_ptr<T[]> out(new T[size]);
+    const T *__restrict out_data = out.get() + offset;
+    const T*__restrict data = data_.get() + offset;
+    if is_contiguous()
+    {
+        for (size_t i = 0; i < t_size; ++i)
+        {
+            (*out_data++) = op(*data++);
+        }
+    }
+    else
+    {
+        AxisIter itr[tensor<T>::NDIM];
+        AxisIter itr[NDIM];
+        size_t out_ind = dim_.size()-1;
+        for (size_t j = 0; j < dim_.size(); ++j)
+        {
+            itr[j].advance = strides_[j];
+            itr[j].reset_val = strides_[j] * (dim_[j] - 1);
+            itr[j].dim = dim_[j];
+        }   
+        for (size_t i = 0; i < t_size; ++i)
+        {
+            *out_data++ = op(*data);
+            advance(itr, 0, out_ind, data);
+        }
+    }
+    return tensor<T>(out, size, n_shp);
+}
+
+
+template <typename T>
+tensor<T> tensor<T>::exp() const{
+    return apply_op([](const T& val) {return exp(val);});
+}
+
+
+
+
+
+
+
+
+
+template <typename T>
 tensor<T> tensor<T>::max(int u) const
 {
     return reduce_op(u, [](const T &a, const T &b)
@@ -68,7 +153,20 @@ tensor<T> tensor<T>::min(int u) const
 }
 
 template <typename T>
+
+tensor<T> tensor<T>::sum(int u) const
+{
+    return reduce_op(u, [](const T &a, const T &b)
+                     { return a+b; });
+}
+
+
+
+
+template <typename T>
+
 template <typename R>
+
 tensor<R> tensor<T>::astype(bool copy) const
 {
     /*
@@ -97,19 +195,16 @@ tensor<R> tensor<T>::astype(bool copy) const
             *raw_new++ = static_cast<R>(*cur_ptr++);
         }
     }
-  
 
     else
     {
         for (size_t k = 0; k < t_size; ++k)
         {
-           
+
             *raw_new++ = static_cast<R>(*cur_ptr);
-            
+
             getIndex(itr, 0, ind_dim, cur_ptr);
         }
-   }
+    }
     return tensor<R>(new_ptr, t_size, dim_);
 }
-
-

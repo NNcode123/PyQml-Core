@@ -10,3 +10,5 @@ namespace py = pybind11;
 
 void bind_dtype(py::module_ &m);
 void bind_tensor(py::module_ &m);
+void bind_constants(py::module_ &m);
+

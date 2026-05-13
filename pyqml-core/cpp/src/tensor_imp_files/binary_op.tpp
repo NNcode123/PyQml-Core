@@ -95,9 +95,9 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func op)
 
         out_data[i] = op(static_cast<R>(*a_data), static_cast<R>(*b_data));
 
-        getIndex(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        advance(a_itr, b_itr, 0, ind_max, a_data, b_data);
     }
-    // return tensor<T>(std::move(out), res_dim);
+
     return tensor<R>(out, size_output, res_dim);
 
     /*
@@ -121,25 +121,43 @@ tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) 
 
     const T *__restrict b_data = b.data_.get() + b.offset;
     const T *__restrict a_data = a.data_.get() + a.offset;
+    size_t a_size = a.t_size;
+    size_t b_size = b.t_size;
     T *__restrict out_data = out.get();
 
     size_t ind_max = res_dim.size() - 1;
 
-    for (size_t i = 0; i < size_output; ++i)
+    if (a.is_contiguous() && b.is_contiguous())
     {
-
-        out_data[i] = op(*a_data, *b_data);
-
-        getIndex(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        const T *__restrict a_start = a_data;
+        const T *__restrict b_start = b_data;
+        const T *__restrict a_end = a_start + a_size;
+        const T *__restrict b_end = b_start + b_size;
+        for (size_t i = 0; i < size_output; ++i)
+        {
+            *out_data++ = op(*a_data, *b_data);
+            if (++a_data == a_end)
+            {
+                a_data = a_start;
+            }
+            if (++b_data == b_end)
+            {
+                b_data = b_start;
+            }
+        }
     }
-    // return tensor<T>(std::move(out), res_dim);
+    else
+    {
+        for (size_t i = 0; i < size_output; ++i)
+        {
+
+            out_data[i] = op(*a_data, *b_data);
+
+            advance(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        }
+    }
+
     return tensor<T>(out, size_output, res_dim);
-
-    /*
-    if (is_contiguous() && b.is_contiguous()){
-        for (size_t j = 0; j < size_output; )
-    }
-        */
 }
 
 template <typename T>
@@ -208,6 +226,14 @@ auto matmul(const tensor<U> &tens_1, const tensor<V> &tens_2)
 {
     return einsum(tens_1, tens_2, {tens_1.size() - 2, tens_1.size() - 1}, {tens_2.size() - 2, tens_2.size() - 1});
 }
+
+/*
+template <typename U, typename V, typename R>
+
+
+R dot(const tensor<U>& a, const tensor<V>& b){
+   // auto
+*/
 
 template <typename U, typename V>
 
@@ -307,22 +333,30 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
     const V *__restrict b_data = tens_2.data();
     T *__restrict out_data = out.get();
 
-    for (size_t a_free_ind = 0; a_free_ind < a_tens_size; ++a_free_ind)
+    if (tens_1.is_contiguous() && tens_2.is_contiguous())
     {
-        for (size_t b_free_ind = 0; b_free_ind < b_tens_size; ++b_free_ind)
-        {
-            T val = 0;
-            for (size_t i_ind = 0; i_ind < inner_size; ++i_ind)
-            {
-                val += (*a_data) * (*b_data);
-                getIndex(a_cont, 0, a_size, a_data);
-                getIndex(b_cont, 0, b_size, b_data);
-            }
-            *out_data++ = val;
-            getIndex(b_free, 0, b_free_size, b_data);
-        }
+        //
+    }
 
-        getIndex(a_free, 0, a_free_size, a_data);
+    else
+    {
+        for (size_t a_free_ind = 0; a_free_ind < a_tens_size; ++a_free_ind)
+        {
+            for (size_t b_free_ind = 0; b_free_ind < b_tens_size; ++b_free_ind)
+            {
+                T val = 0;
+                for (size_t i_ind = 0; i_ind < inner_size; ++i_ind)
+                {
+                    val += (*a_data) * (*b_data);
+                    advance(a_cont, 0, a_size, a_data);
+                    advance(b_cont, 0, b_size, b_data);
+                }
+                *out_data++ = val;
+                advance(b_free, 0, b_free_size, b_data);
+            }
+
+            advance(a_free, 0, a_free_size, a_data);
+        }
     }
 
     /*
@@ -333,4 +367,97 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
     */
 
     return tensor<T>(out, size_output, res_dim);
+}
+
+template <typename T, typename U, typename R>
+
+auto concat(const tensor<T> &a, const tensor<U> &b, size_t axis = 0)
+{
+
+    std::vector<size_t> dim = a.dim();
+    dim[axis] += b.dim()[axis];
+
+    const size_t a_size = a.size();
+    const size_t b_size = b.size();
+
+    size_t a_contract_size = 1, b_contract_size = 1;
+
+    for (size_t i = axis; i < b.dim().size(); ++i)
+    {
+        a_contract_size *= a.dim()[i];
+        b_contract_size *= b.dim()[i];
+    }
+
+    size_t num_chunks = a_size / a_contract_size;
+
+    const size_t out_size = a_size + b_size;
+
+    std::shared_ptr<R[]> out(new R[out_size]);
+
+    R *__restrict out_ptr = out.get();
+    const T *__restrict a_ptr = a.data();
+    const U *__restrict b_ptr = b.data();
+
+    size_t a_max_dim = dim.size() - 1;
+    size_t b_max_dim = dim.size() - 1;
+
+    AxisIter a_itr[tensor<T>::NDIM];
+    AxisIter b_itr[tensor<T>::NDIM];
+
+    for (size_t i = 0; i <= a_max_dim; ++i)
+    {
+        auto &cur_axis = a_itr[i];
+        cur_axis.dim = a.dim()[i];
+        cur_axis.advance = a.strides()[i];
+        cur_axis.reset_val = (cur_axis.dim - 1) * (cur_axis.advance);
+    }
+
+    for (size_t i = 0; i <= b_max_dim; ++i)
+    {
+        auto &cur_axis = b_itr[i];
+        cur_axis.dim = b.dim()[i];
+        cur_axis.advance = b.strides()[i];
+        cur_axis.reset_val = (cur_axis.dim - 1) * (cur_axis.advance);
+    }
+
+    for (size_t num_i = 0; num_i < num_chunks; ++num_i)
+    {
+        for (size_t ind_1 = 0; ind_1 < a_contract_size; ++ind_1)
+        {
+            *out_ptr++ = *a_ptr;
+            advance(a_itr, 0, a_max_dim, a_ptr);
+        }
+
+        for (size_t ind_2 = 0; ind_2 < b_contract_size; ++ind_2)
+        {
+            *out_ptr++ = *b_ptr;
+            advance(b_itr, 0, b_max_dim, b_ptr);
+        }
+    }
+
+    return tensor<R>(out, out_size, dim);
+}
+
+template <typename U, typename V, typename R>
+
+auto vstack(const tensor<U> &a, const tensor<V> &b)
+{
+    return concat<U, V, R>(a, b, 0);
+}
+
+template <typename U, typename V, typename R>
+
+auto hstack(const tensor<U> &a, const tensor<V> &b)
+{
+    return concat<U, V, R>(a, b, 1);
+}
+
+template <typename T>
+
+tensor<T> empty(const std::vector<size_t> &shape)
+{
+    size_t size = 1;
+    for (auto &val)
+        size *= val;
+    return tensor<T>(std::shared_ptr<new T[size]>, size, shape);
 }

@@ -71,6 +71,11 @@ public:
     static constexpr size_t NDIM = 8;
     explicit tensor() : data_(nullptr), dim_({}) {}
 
+    empty(const std::vector<size_t> dim_){
+        t_size = 0;
+        data_ = std::shared_ptr<T[]> buff(new T[])
+    }
+
     tensor(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
            const size_t &ofst, const size_t &te_size) : data_(buffer), dim_(dims),
                                                         strides_(strides), offset(ofst), t_size(te_size)
@@ -113,10 +118,7 @@ public:
 
     [[nodiscard]] size_t size() const
     {
-        size_t size = 1;
-        for (const auto &val : dim_)
-            size *= val;
-        return size;
+        return t_size;
     }
     [[nodiscard]] std::vector<size_t> dim() const { return dim_; }
     [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
@@ -164,6 +166,8 @@ public:
     std::pair<size_t, size_t> collapse_size() const;
     bool is_contiguous() const;
     [[nodiscard]] tensor<T> copy() const;
+
+
     template <typename Func>
     tensor<T> binary_op(const tensor<T> &a, const tensor<T> &b, Func op) const;
     tensor<T> operator+(const tensor<T> &b) const;
@@ -173,11 +177,34 @@ public:
     template <typename V, typename R>
     tensor<R> operator+(const tensor<V> &other);
     template <typename ElmOp>
-    tensor<T> reduce_op(int a, ElmOp op) const;
+    tensor<T> reduce_op(int a, ElmOp&& op) const;
+    // unary ops
     template <typename ElmOp>
-    tensor<T> reduce_op(ElmOp op);
+    T reduce_op(ElmOp&& op);
+
+    template <typename ElmOp>
+    tensor<T> apply_op(ElmOp&& op);
+
     tensor<T> max(int axis) const;
     tensor<T> min(int axis) const;
+    tensor<T> sum(int axis) const;
+    tensor<T> prod(int axis) const;
+    tensor<T> mean(int axis) const;
+    T sum() const;
+    T mean() const;
+    T mean() const;
+    T max() const;
+    tensor<T> sin() const;
+    tensor<T> exp() const;
+    tensor<T> cos() const;
+    tensor<T> tan() const;
+    tensor<T> cot() const;
+    tensor<T> csc() const;
+    tensor<T> sec() const;
+    tensor<T> sinh() const;
+    tensor<T> cosh() const;
+    tensor<T> tanh() const;
+
     template <typename R>
     tensor<R> astype(bool copy = false) const;
     [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const;

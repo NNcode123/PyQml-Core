@@ -1,6 +1,8 @@
 import pyqmlcore as pyq
 import numpy as np
 
+
+
 # dims
 D0, D1, D2 = 50, 40, 30   # smaller so you can debug easier
 

@@ -25,7 +25,7 @@ namespace detail
     };
 
     template <typename T>
-    inline void getIndex(AxisIter *axis_info, size_t start_dim, size_t end_dim, const T *__restrict &src)
+    inline void advance(AxisIter *axis_info, size_t start_dim, size_t end_dim, const T *__restrict &src)
     {
         while (axis_info[end_dim].count >= axis_info[end_dim].dim)
         {
@@ -87,7 +87,7 @@ namespace detail
 
     template <typename T, typename V>
 
-    inline void getIndex(AxisIter *axes_a, AxisIter *axes_b, size_t start_index, size_t end_index, const T *__restrict &a_data, const V *__restrict &b_data)
+    inline void advance(AxisIter *axes_a, AxisIter *axes_b, size_t start_index, size_t end_index, const T *__restrict &a_data, const V *__restrict &b_data)
     {
 
         while (axes_a[end_index].count == axes_a[end_index].dim)

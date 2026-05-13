@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include "../cpp/src/tensor.hpp"
+
 
 enum class DType
 {
