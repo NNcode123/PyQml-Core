@@ -1,5 +1,5 @@
 # PyQml-Core
-PyQml is a C++ backed Python module that supports efficient, scalable linear algebra operators for Quantum and Machine Learning(QML) focused projects.4
+PyQml is a C++ backed Python module that supports efficient, scalable linear algebra operators for Quantum and Machine Learning(QML) focused projects.
 
 ## Architecture 
 ```text
@@ -27,8 +27,6 @@ pyqml-core/
 ### Memory Layout 
 
 The tensor uses **row-major (C-style)** memory layout, meaning indices are mapped linearly as:
-
-
 
 $$
 \text{index(i,j,k)} = i \cdot (d_2 d_3) + j \cdot d_3 + k
@@ -59,11 +57,15 @@ $$
 ### Notes for Implementation
 
 - Strides can be precomputed as:
+
   $$
   \text{stride}_k = \prod_{j=k+1}^{n} d_j
   $$
+  
 - Bounds checking should occur before computing the linear index
+  
 - Reshape operations must preserve:
+
   $$
   \prod d_{\text{old}} = \prod d_{\text{new}}
   $$
