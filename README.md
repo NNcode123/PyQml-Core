@@ -5,20 +5,12 @@ PyQml is a C++ backed Python module that supports efficient, scalable linear alg
 ```text
 pyqml-core/
 ├── cpp/
-│   ├── include/pyqml/
-│   │   ├── matrix.hpp
-│   │   ├── tensor.hpp
-│   │   └── ml/
 │   ├── src/
-│   │   ├── matrix.cpp
-│   │   ├── tensor.cpp
-│   │   └── ml/
+|   └── tensor implementation details ... 
 │
 ├── bindings/
 │   └── pybind_module.cpp
 │
-├── python/pyqml/
-│   │── __init__.py
 │
 ├── tests/
 └── README.md
