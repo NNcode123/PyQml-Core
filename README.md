@@ -54,24 +54,6 @@ $$
 
 ---
 
-### Notes for Implementation
-
-- Strides can be precomputed as:
-
-  $$
-  \text{stride}_k = \prod_{j=k+1}^{n} d_j
-  $$
-  
-- Bounds checking should occur before computing the linear index
-  
-- Reshape operations must preserve:
-
-  $$
-  \prod d_{\text{old}} = \prod d_{\text{new}}
-  $$
-
----
-
 ### Benchmarking 
 
 Basic operations, including the standard elementwise operations and contraction/einsum routines, were benchmarked against canonical Numpy implementations. 
