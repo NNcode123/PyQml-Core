@@ -1,7 +1,8 @@
 #pragma once
 #include "bindings.hpp"
 
-
+// This helper infers a native DType from a Python dtype object by matching it against
+// the supported scalar types and returning the corresponding enum value.
 template <typename... Ts>
 
 DType inf_dtyp_python(py::dtype dt)
@@ -15,12 +16,13 @@ DType inf_dtyp_python(py::dtype dt)
         } }(), ...);
 
     if (found)
-        return result; 
-    
+        return result;
+
     throw std::runtime_error("Unsupported object type");
-    
 }
 
+// This helper maps Python values and type objects into the internal DType representation
+// so arithmetic and tensor construction can choose the correct native storage type.
 inline DType infer_types(py::object obj, bool obj_instance)
 {
     if (obj_instance)

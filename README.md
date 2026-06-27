@@ -1,20 +1,38 @@
 # PyQml-Core
 PyQml is a C++ backed Python module that supports efficient, scalable linear algebra operators for Quantum and Machine Learning(QML) focused projects.
 
-## Architecture 
+## Architecture
 ```text
-pyqml-core/
-├── cpp/
-│   ├── src/
-|   └── tensor implementation details ... 
-│
-├── bindings/
-│   └── pybind_module.cpp
-│
-│
-├── tests/
-└── README.md
+PyQml-Core/
+├── README.md
+└── pyqml-core/
+    ├── bindings/
+    │   ├── Autograd/
+    │   ├── Tensor_ops/
+    │   ├── bindings.hpp
+    │   ├── dtype.hpp
+    │   ├── dtype_bindings.cpp
+    │   ├── pybind_module.cpp
+    │   ├── PyType.hpp
+    │   ├── tensor_init.cpp
+    │   └── Tensor.hpp
+    ├── cpp/
+    │   └── src/
+    │       ├── tensor.hpp
+    │       ├── tensor_imp_files/
+    │       ├── test.cpp
+    │       └── thread/
+    └── tests/
+        ├── func_test.py
+        ├── libe.py
+        └── test.py
 ```
+
+The package is organized into three layers:
+- bindings/: the pybind11 bridge that exposes the native tensor engine to Python.
+- cpp/src/: the core tensor implementation, including slicing, broadcasting, reductions, and thread helpers.
+- tests/: small validation and benchmarking scripts used to exercise the module from Python.
+
 
 ### Memory Layout 
 

@@ -12,6 +12,8 @@ namespace detail
         int64_t advance = 0;
         int64_t reset_val = 0;
 
+        // This helper returns the stride delta to apply for the selected axis, which makes the
+        // iterator logic work for both regular and range-based indexing schemes.
         int64_t next(size_t index)
         {
             if (!diffs.empty())
@@ -24,6 +26,8 @@ namespace detail
         }
     };
 
+    // This helper advances a pointer through the tensor data according to the current iterator
+    // state so the traversal logic can move from one element to the next without recomputing coordinates.
     template <typename T>
     inline void advance(AxisIter *axis_info, size_t start_dim, size_t end_dim, const T *__restrict &src)
     {
@@ -41,6 +45,8 @@ namespace detail
         ++axis_info[end_dim].count;
     }
 
+    // This helper advances a vector-based iterator plan and returns the new linear offset for
+    // the next element in a sliced tensor traversal.
     inline int64_t getIndex(std::vector<AxisIter> &axis_info,
                             const std::vector<size_t> &new_dim,
                             size_t start_index, size_t end_index, int64_t cur_pos)
@@ -85,6 +91,8 @@ namespace detail
     }
         */
 
+    // This helper advances two pointers in lockstep while walking broadcasted tensor data, which
+    // is essential for elementwise operations that need to compare aligned values from both operands.
     template <typename T, typename V>
 
     inline void advance(AxisIter *axes_a, AxisIter *axes_b, size_t start_index, size_t end_index, const T *__restrict &a_data, const V *__restrict &b_data)
@@ -108,8 +116,6 @@ namespace detail
 
         a_data += axes_a[end_index].advance;
         b_data += axes_b[end_index].advance;
-        
-    }
-
+        }
 
 }

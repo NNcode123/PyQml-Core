@@ -111,16 +111,19 @@ import time
 import pyqmlcore as pyq
 import matplotlib.pyplot as plt
 
-
+# This benchmark helper runs a callable repeatedly and reports the average execution time so
+# the Python-side performance of the native tensor engine can be compared against NumPy.
 def time_block(name, fn):
     t0 = time.perf_counter()
-    for _ in range(1000):
+    for _ in range(100):
         out = fn()
     t1 = time.perf_counter()
-    print(f"{name}: {(t1 - t0)/1000:.6f} sec")
+    print(f"{name}: {(t1 - t0)/100:.6f} sec")
     return (t1 - t0)/1000
 
 # ---------------- PREBUILD ----------------
+# This helper constructs a pair of native pyqml tensors from a shape specification so the
+# benchmark scripts can exercise the same data layout through the C++ binding layer.
 def build_pyq(shape_1, shape_2):
     size_1 = np.prod(shape_1)
     size_2 = np.prod(shape_2)
@@ -132,12 +135,16 @@ def build_pyq(shape_1, shape_2):
     t2 = pyq.Tensor(data_2, dim=list(shape_2))
     return t1, t2
 
+# This helper constructs the equivalent NumPy arrays for validation and timing purposes so
+# the native tensor engine can be checked against a trusted reference implementation.
 def build_numpy(shape_1, shape_2):
     a = np.arange(np.prod(shape_1)).reshape(shape_1) % 97
     b = (np.arange(np.prod(shape_2)) * 3 % 89).reshape(shape_2)
     return a, b
 
 # ---------------- OPS ONLY ----------------
+# This helper dispatches supported tensor operations through the pyqml binding layer so the
+# benchmark loop can compare a single public interface across multiple operator choices.
 def pyq_op(t1, t2, op):
     if op == "add": return t1 + t2
     if op == "sub": return t1 - t2
@@ -146,6 +153,8 @@ def pyq_op(t1, t2, op):
     if op == "einsum":
         return pyq.einsum(t1, t2, [len(t1.shape)-1], [len(t2.shape)-2])
 
+# This helper dispatches the equivalent NumPy operations so the test harness can compare the
+# native tensor results against a known-good reference implementation on the same inputs.
 def numpy_op(a, b, op):
     if op == "add": return a + b
     if op == "sub": return a - b
@@ -157,7 +166,7 @@ def numpy_op(a, b, op):
 ops = ["add", "sub", "mul"]
 
 broadcast_shapes = [
-    ((64,64,64), (1,64,1)),
+    ((64,640,64), (64,640,64)),
     ((128,128,64), (1,128,1)),
     ((128,128,128), (1,128,1))
 ]

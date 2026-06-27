@@ -1,3 +1,5 @@
+// This file contains experimental CUDA iterator utilities for future GPU-backed tensor
+// traversal and is documented here to clarify the intended role of the placeholder kernels.
 #include <cuda_runtime.h>
 #include <cstddef>
 #include "iostream"

@@ -87,7 +87,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Include" /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Lib/site-packages/pybind11/include" /bigobj</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -116,10 +116,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;Py_NO_LINK_LIB;CMAKE_INTDIR=\"Debug\";pyqmlcore_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -139,26 +139,11 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>	</Message>
+      <Message></Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/Debug/pyqmlcore.cp313-win_amd64.pyd C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/Debug/pyqmlcore.pdb C:\Users\nitro\AppData\Local\Programs\Python\Python313
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd
-setlocal
-cd C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\build
-if %errorlevel% neq 0 goto :cmEnd
-C:
-if %errorlevel% neq 0 goto :cmEnd
-C:\Users\nitro\AppData\Local\Programs\Python\Python313\python.exe -m pybind11_stubgen pyqmlcore
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/stubs/pyqmlcore.pyi C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -191,21 +176,22 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Include" /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Lib/site-packages/pybind11/include" -O3 -march=native -mtune=native /bigobj</AdditionalOptions>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Include" /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Lib/site-packages/pybind11/include" /LTCG /bigobj</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
       <CallingConvention></CallingConvention>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <ExceptionHandling>Sync</ExceptionHandling>
       <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
-      <FloatingPointModel></FloatingPointModel>
+      <FloatingPointModel>Fast</FloatingPointModel>
       <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MinimalRebuild></MinimalRebuild>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
-      <Optimization></Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -222,10 +208,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;Py_NO_LINK_LIB;CMAKE_INTDIR=\"Release\";pyqmlcore_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -245,26 +231,11 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>	</Message>
+      <Message></Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/Release/pyqmlcore.cp313-win_amd64.pyd C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/Release/pyqmlcore.pdb C:\Users\nitro\AppData\Local\Programs\Python\Python313
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd
-setlocal
-cd C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\build
-if %errorlevel% neq 0 goto :cmEnd
-C:
-if %errorlevel% neq 0 goto :cmEnd
-C:\Users\nitro\AppData\Local\Programs\Python\Python313\python.exe -m pybind11_stubgen pyqmlcore
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/stubs/pyqmlcore.pyi C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -298,7 +269,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Include" /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Lib/site-packages/pybind11/include" /bigobj</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -330,10 +301,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;Py_NO_LINK_LIB;CMAKE_INTDIR=\"MinSizeRel\";pyqmlcore_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -353,26 +324,11 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>	</Message>
+      <Message></Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/MinSizeRel/pyqmlcore.cp313-win_amd64.pyd C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/MinSizeRel/pyqmlcore.pdb C:\Users\nitro\AppData\Local\Programs\Python\Python313
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd
-setlocal
-cd C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\build
-if %errorlevel% neq 0 goto :cmEnd
-C:
-if %errorlevel% neq 0 goto :cmEnd
-C:\Users\nitro\AppData\Local\Programs\Python\Python313\python.exe -m pybind11_stubgen pyqmlcore
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/stubs/pyqmlcore.pyi C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -406,7 +362,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Include" /external:I "C:/Users/nitro/AppData/Local/Programs/Python/Python313/Lib/site-packages/pybind11/include" /bigobj</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -436,10 +392,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;Py_NO_LINK_LIB;CMAKE_INTDIR=\"RelWithDebInfo\";pyqmlcore_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp\include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\cpp;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Include;C:\Users\nitro\AppData\Local\Programs\Python\Python313\Lib\site-packages\pybind11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -459,26 +415,11 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>	</Message>
+      <Message></Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/RelWithDebInfo/pyqmlcore.cp313-win_amd64.pyd C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/RelWithDebInfo/pyqmlcore.pdb C:\Users\nitro\AppData\Local\Programs\Python\Python313
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd
-setlocal
-cd C:\Users\nitro\Documents\PyQMLProject\PyQml-Core\pyqml-core\cpp\src\build
-if %errorlevel% neq 0 goto :cmEnd
-C:
-if %errorlevel% neq 0 goto :cmEnd
-C:\Users\nitro\AppData\Local\Programs\Python\Python313\python.exe -m pybind11_stubgen pyqmlcore
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/nitro/Documents/PyQMLProject/PyQml-Core/pyqml-core/cpp/src/build/stubs/pyqmlcore.pyi C:\Users\nitro\AppData\Local\Programs\Python\Python313
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone

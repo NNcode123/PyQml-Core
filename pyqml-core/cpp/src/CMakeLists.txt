@@ -6,7 +6,7 @@ project(PyQmlCore LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS_RELEASE "/O2 /GL /DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "/O2 /GL /LTCG /arch:AVX2 /fp:fast /openmp /DNDEBUG /MP")
 
 # 🔥 make OpenMP optional (fixes your error)
 find_package(OpenMP)
@@ -29,12 +29,14 @@ set(CMAKE_PREFIX_PATH
 )
 find_package(pybind11 REQUIRED)
 
-find_package(OpenBLAS REQUIRED)
+#find_package(OpenBLAS REQUIRED)
 
 
 
 # Allow Easy Includes for Files
 include_directories(${PROJECT_SOURCE_DIR}/cpp)
+
+message(STATUS "Project source dir is:  ${PROJECT_SOURCE_DIR}")
 
 
 # ---------------- TEST ----------------
@@ -45,11 +47,13 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-set(BUILD_LIB_DIR ${PROJECT_SOURCE_DIR}/bindings)
+set(BUILD_LIB_DIR ${PROJECT_SOURCE_DIR}/../../bindings)
 
 # ---------------- PYTHON MODULE ----------------
 pybind11_add_module(pyqmlcore
-    ${BUILD_LIB_DIR}/*.cpp
+    ${BUILD_LIB_DIR}/pybind_module.cpp
+    ${BUILD_LIB_DIR}/tensor_init.cpp 
+    ${BUILD_LIB_DIR}/dtype_bindings.cpp  
 )
 
 # only link OpenMP if available (IMPORTANT)
@@ -57,7 +61,7 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(pyqmlcore PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-target_link_libraries(pyqmlcore PRIVATE OpenBLAS::OpenBLAS)
+
 
 # ---------------- CLEAN OLD FILES ----------------
 add_custom_command(TARGET pyqmlcore PRE_BUILD
@@ -81,5 +85,7 @@ add_custom_command(TARGET pyqmlcore POST_BUILD
     
     
 )
+
+
 
 

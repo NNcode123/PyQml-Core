@@ -3,6 +3,8 @@
 #include "Tensor.hpp"
 #include "PyType.hpp"
 
+// This helper registers the Tensor class and the high-level tensor operations with
+// the Python module so that native objects can be constructed and manipulated from Python.
 void bind_tensor(py::module &m)
 {
 

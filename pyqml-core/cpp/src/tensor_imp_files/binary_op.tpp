@@ -14,6 +14,8 @@ struct BroadCast
     AxisIter b_itr[size];
     size_t size_output;
     std::vector<size_t> res_dim;
+    // This helper prepares broadcast metadata for two tensors so elementwise operations can
+    // walk the input data with a consistent set of iterator states and output dimensions.
     BroadCast(const tensor<T> &a, const tensor<V> &b, size_t dim_size_max = 0)
     {
         std::vector<size_t> a_dim = a.dim();
@@ -71,9 +73,11 @@ struct BroadCast
     }
 };
 
+// This generic helper applies a binary operation to two tensors after broadcasting them into
+// a common shape and writing the result into a newly allocated output tensor.
 template <typename T, typename V, typename Func>
 
-auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func op)
+auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func &&op)
 {
 
     using R = decltype(op(std::declval<T>(), std::declval<V>()));
@@ -88,25 +92,92 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func op)
     R *__restrict out_data = out.get();
     const V *__restrict b_data = b.data();
     const T *__restrict a_data = a.data();
+    const size_t a_size = a.size();
+    const size_t b_size = b.size();
     size_t ind_max = res_dim.size() - 1;
 
-    for (size_t i = 0; i < size_output; ++i)
-    {
-
-        out_data[i] = op(static_cast<R>(*a_data), static_cast<R>(*b_data));
-
-        advance(a_itr, b_itr, 0, ind_max, a_data, b_data);
-    }
-
-    return tensor<R>(out, size_output, res_dim);
-
     /*
-    if (is_contiguous() && b.is_contiguous()){
-        for (size_t j = 0; j < size_output; )
+    if (a.is_contiguous() && b.is_contiguous())
+    {
+        const T *__restrict a_start = a_data;
+        const V *__restrict b_start = b_data;
+        const T *__restrict a_end = a_start + a_size;
+        const V *__restrict b_end = b_start + b_size;
+        for (size_t i = 0; i < size_output; ++i)
+        {
+            *out_data++ = op(static_cast<R>(*a_data), static_cast<R>(*b_data));
+            if (++a_data == a_end)
+            {
+                a_data = a_start;
+            }
+            if (++b_data == b_end)
+            {
+                b_data = b_start;
+            }
+        }
     }
         */
+
+    // else
+    //{
+    if (size_output < 70000)
+    {
+        for (size_t i = 0; i < size_output; ++i)
+        {
+
+            out_data[i] = op(static_cast<R>(*a_data), static_cast<R>(*b_data));
+
+            advance(a_itr, b_itr, 0, ind_max, a_data, b_data);
+        }
+    }
+    else
+    {
+        size_t num_ths = 8;
+        size_t chunk = (size_output + num_ths - 1) / num_ths;
+        for (int i = 0; i < num_ths; ++i)
+        {
+            size_t start = chunk * i;
+            size_t end = std::min(size_output, start + chunk);
+
+            std::array<AxisIter, tensor<T>::NDIM> a_cur;
+            std::array<AxisIter, tensor<T>::NDIM> b_cur;
+            // AxisIter a_cur[tensor<T>::NDIM];
+            // AxisIter b_cur[tensor<V>::NDIM];
+
+            init_itr_state(start, ind_max + 1, a_itr, b_itr, a_cur.data(), b_cur.data());
+
+            const T *__restrict a_ptr = a_data;
+            const V *__restrict b_ptr = b_data;
+
+            for (int j = ind_max; j >= 0; j--)
+            {
+                a_ptr += a_cur[j].advance * (a_cur[j].count - 1);
+                b_ptr += b_cur[j].advance * (b_cur[j].count - 1);
+            }
+
+            pool.enqueue([=]() mutable
+                         {
+                                 for (size_t idx = start; idx < end; ++idx)
+                                 {
+
+                                     out_data[idx] = op(static_cast<R>(*a_ptr), static_cast<R>( *b_ptr));
+
+                                   
+                                     
+
+                                     advance(a_cur.data(), b_cur.data(), 0, ind_max, a_ptr, b_ptr);
+                                 } });
+        }
+
+        pool.wait();
+    }
+    // }
+
+    return tensor<R>(out, size_output, res_dim);
 }
 
+// This member overload performs the same elementwise binary operation as the free helper but
+// uses the tensor instance as the left-hand operand and preserves the class-specific state.
 template <typename T>
 template <typename Func>
 tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) const
@@ -129,37 +200,108 @@ tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) 
 
     if (a.is_contiguous() && b.is_contiguous())
     {
-        const T *__restrict a_start = a_data;
-        const T *__restrict b_start = b_data;
-        const T *__restrict a_end = a_start + a_size;
-        const T *__restrict b_end = b_start + b_size;
-        for (size_t i = 0; i < size_output; ++i)
+        if (a_size == size_output && b_size == size_output)
         {
-            *out_data++ = op(*a_data, *b_data);
-            if (++a_data == a_end)
+            size_t num_ths = 8;
+            size_t chunk = (size_output + num_ths - 1) / num_ths;
+
+            for (size_t t = 0; t < num_ths; ++t)
             {
-                a_data = a_start;
+                size_t start = t * chunk;
+                size_t end = std::min(size_output, start + chunk);
+
+                pool.enqueue([=]()
+                             {
+        for (size_t i = start; i < end; ++i)
+            out_data[i] = op(a_data[i], b_data[i]); });
             }
-            if (++b_data == b_end)
+
+            pool.wait();
+        }
+        else
+        {
+            const T *__restrict a_start = a_data;
+            const T *__restrict b_start = b_data;
+            const T *__restrict a_end = a_start + a_size;
+            const T *__restrict b_end = b_start + b_size;
+            for (size_t i = 0; i < size_output; ++i)
             {
-                b_data = b_start;
+                *out_data++ = op(*a_data, *b_data);
+                if (++a_data == a_end)
+                {
+                    a_data = a_start;
+                }
+                if (++b_data == b_end)
+                {
+                    b_data = b_start;
+                }
             }
         }
     }
+
     else
     {
-        for (size_t i = 0; i < size_output; ++i)
+
+        if (size_output < 7000)
+        {
+            for (size_t i = 0; i < size_output; ++i)
+            {
+
+                out_data[i] = op(*a_data, *b_data);
+
+                advance(a_itr, b_itr, 0, ind_max, a_data, b_data);
+            }
+        }
+
+        else
         {
 
-            out_data[i] = op(*a_data, *b_data);
+            size_t num_ths = 8;
+            size_t chunk = (size_output + num_ths - 1) / num_ths;
+            for (int i = 0; i < num_ths; ++i)
+            {
+                size_t start = chunk * i;
+                size_t end = std::min(size_output, start + chunk);
 
-            advance(a_itr, b_itr, 0, ind_max, a_data, b_data);
+                // std::array<AxisIter, tensor<T>::NDIM> a_cur;
+                // std::array<AxisIter, tensor<T>::NDIM> b_cur;
+                std::array<AxisIter, tensor<T>::NDIM> a_cur;
+                std::array<AxisIter, tensor<T>::NDIM> b_cur;
+
+                init_itr_state(start, ind_max + 1, a_itr, b_itr, a_cur.data(), b_cur.data());
+
+                const T *__restrict a_ptr = a_data;
+                const T *__restrict b_ptr = b_data;
+
+                for (int j = ind_max; j >= 0; j--)
+                {
+                    a_ptr += a_cur[j].advance * a_cur[j].count;
+                    b_ptr += b_cur[j].advance * b_cur[j].count;
+                }
+
+                pool.enqueue([=]() mutable
+                             {
+                                 for (size_t idx = start; idx < end; ++idx)
+                                 {
+
+                                     out_data[idx] = op(*a_ptr, *b_ptr);
+
+                                   
+                                     
+
+                                     advance(a_cur.data(), b_cur.data(), 0, ind_max, a_ptr, b_ptr);
+                                 } });
+            }
+
+            pool.wait();
         }
     }
 
     return tensor<T>(out, size_output, res_dim);
 }
 
+// This overload implements elementwise addition for tensors and routes the work through the
+// shared binary operation path so the behavior is consistent across numeric types.
 template <typename T>
 tensor<T> tensor<T>::operator+(const tensor<T> &other) const
 {
@@ -167,6 +309,8 @@ tensor<T> tensor<T>::operator+(const tensor<T> &other) const
                      { return u + v; });
 }
 
+// This overload implements elementwise subtraction for tensors and returns a new tensor
+// that contains the broadcasted difference of the two inputs.
 template <typename T>
 tensor<T> tensor<T>::operator-(const tensor<T> &other) const
 {
@@ -174,6 +318,8 @@ tensor<T> tensor<T>::operator-(const tensor<T> &other) const
                      { return u - v; });
 }
 
+// This overload implements elementwise multiplication for tensors and uses the shared
+// broadcasting machinery so scalar and array-like shapes can be combined safely.
 template <typename T>
 tensor<T> tensor<T>::operator*(const tensor<T> &other) const
 {
@@ -181,6 +327,8 @@ tensor<T> tensor<T>::operator*(const tensor<T> &other) const
                      { return u * v; });
 }
 
+// This overload implements elementwise division for tensors and produces a new tensor with
+// the broadcasted result of dividing the left operand by the right operand.
 template <typename T>
 tensor<T> tensor<T>::operator/(const tensor<T> &other) const
 {
@@ -188,6 +336,28 @@ tensor<T> tensor<T>::operator/(const tensor<T> &other) const
                      { return u / v; });
 }
 
+// This helper compares two tensors elementwise and returns a boolean tensor that marks
+// positions where the left operand is strictly greater than the right operand.
+template <typename U, typename V>
+
+tensor<bool> greater(const tensor<U> &a, const tensor<V> &b)
+{
+    return binary_ops(a, b, [](const U &u, const V &v)
+                      { return u > v; });
+}
+
+// This helper compares two tensors elementwise and returns a boolean tensor that marks
+// positions where the left operand is strictly smaller than the right operand.
+template <typename U, typename V>
+
+tensor<bool> less(const tensor<U> &a, const tensor<V> &b)
+{
+    return binary_ops(a, b, [](const U &u, const V &v)
+                      { return u < v; });
+}
+
+// This method computes the outer product of two tensors by expanding the dimensions of the
+// left and right operands into a single tensor whose shape is the concatenation of both shapes.
 template <typename T>
 [[nodiscard]] tensor<T> tensor<T>::tensor_prod(const tensor<T> &other) const
 {
@@ -220,6 +390,8 @@ template <typename T>
     return tensor<T>(std::move(new_data), new_dim);
 }
 
+// This helper performs a matrix multiplication by delegating to the einsum implementation with
+// the standard contraction axes used for batched matrix products.
 template <typename U, typename V>
 
 auto matmul(const tensor<U> &tens_1, const tensor<V> &tens_2)
@@ -235,6 +407,8 @@ R dot(const tensor<U>& a, const tensor<V>& b){
    // auto
 */
 
+// This helper evaluates a generalized einsum contraction by identifying the contracted and free
+// axes of both operands and accumulating products into a new output tensor with the requested shape.
 template <typename U, typename V>
 
 auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> Axes_a, std::vector<int> Axes_b /*, std::vector<int> shared_axes*/)
@@ -333,42 +507,29 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
     const V *__restrict b_data = tens_2.data();
     T *__restrict out_data = out.get();
 
-    if (tens_1.is_contiguous() && tens_2.is_contiguous())
+    for (size_t a_free_ind = 0; a_free_ind < a_tens_size; ++a_free_ind)
     {
-        //
-    }
-
-    else
-    {
-        for (size_t a_free_ind = 0; a_free_ind < a_tens_size; ++a_free_ind)
+        for (size_t b_free_ind = 0; b_free_ind < b_tens_size; ++b_free_ind)
         {
-            for (size_t b_free_ind = 0; b_free_ind < b_tens_size; ++b_free_ind)
+            T val = 0;
+            for (size_t i_ind = 0; i_ind < inner_size; ++i_ind)
             {
-                T val = 0;
-                for (size_t i_ind = 0; i_ind < inner_size; ++i_ind)
-                {
-                    val += (*a_data) * (*b_data);
-                    advance(a_cont, 0, a_size, a_data);
-                    advance(b_cont, 0, b_size, b_data);
-                }
-                *out_data++ = val;
-                advance(b_free, 0, b_free_size, b_data);
+                val += (*a_data) * (*b_data);
+                advance(a_cont, 0, a_size, a_data);
+                advance(b_cont, 0, b_size, b_data);
             }
-
-            advance(a_free, 0, a_free_size, a_data);
+            *out_data++ = val;
+            advance(b_free, 0, b_free_size, b_data);
         }
-    }
 
-    /*
-    tens_1.dim = a_old_dim;
-    tens_1.strides = a_old_stirdes;
-    tens_2.dim = b_old_strides;
-    tens_2.strides = b_old_dim;
-    */
+        advance(a_free, 0, a_free_size, a_data);
+    }
 
     return tensor<T>(out, size_output, res_dim);
 }
 
+// This helper concatenates two tensors along a specified axis by expanding the target dimension
+// and copying the source data into a single output tensor with the merged shape.
 template <typename T, typename U, typename R>
 
 auto concat(const tensor<T> &a, const tensor<U> &b, size_t axis = 0)
@@ -438,6 +599,8 @@ auto concat(const tensor<T> &a, const tensor<U> &b, size_t axis = 0)
     return tensor<R>(out, out_size, dim);
 }
 
+// This helper stacks tensors vertically by concatenating them along the first axis, which is
+// a convenient wrapper for building taller tensors from smaller ones.
 template <typename U, typename V, typename R>
 
 auto vstack(const tensor<U> &a, const tensor<V> &b)
@@ -445,19 +608,11 @@ auto vstack(const tensor<U> &a, const tensor<V> &b)
     return concat<U, V, R>(a, b, 0);
 }
 
+// This helper stacks tensors horizontally by concatenating them along the second axis, which
+// is a convenient wrapper for building wider tensors from smaller ones.
 template <typename U, typename V, typename R>
 
 auto hstack(const tensor<U> &a, const tensor<V> &b)
 {
     return concat<U, V, R>(a, b, 1);
-}
-
-template <typename T>
-
-tensor<T> empty(const std::vector<size_t> &shape)
-{
-    size_t size = 1;
-    for (auto &val)
-        size *= val;
-    return tensor<T>(std::shared_ptr<new T[size]>, size, shape);
 }

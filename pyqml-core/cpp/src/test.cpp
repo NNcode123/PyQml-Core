@@ -8,18 +8,22 @@
 #include <random>
 #include <memory>
 
+// This helper benchmarks a callable repeatedly so the C++ test harness can report the cost of
+// a small tensor workload in a consistent and readable way.
 template <typename F>
 void time_block(const std::string &name, F &&fn)
 {
     auto t0 = std::chrono::high_resolution_clock::now();
-    for (size_t j = 0; j < 2; ++j)
+    for (size_t j = 0; j < 100; ++j)
         fn();
     auto t1 = std::chrono::high_resolution_clock::now();
     std::cout << name << ": "
-              << std::chrono::duration<double>(t1 - t0).count() / 2
+              << std::chrono::duration<double>(t1 - t0).count() / 100
               << " sec\n";
 }
 
+// This entry point exercises the tensor implementation with a small set of example operations
+// and prints the results so developers can probe the library behavior directly from C++.
 int main()
 {
     /*
@@ -1164,10 +1168,49 @@ int main()
     tensor<int> B2(data_B2, 40, {2, 5, 4});
 
     // concat along axis 1
-    auto C2 = concat<int,int,int>(A2, B2, 1);
+    auto C2 = concat<int, int, int>(A2, B2, 1);
 
     std::cout << "Expected shape: (2, 8, 4)\n";
     std::cout << C2 << "\n";
     std::cout << A2 << "\n";
     std::cout << B2 << "\n";
+
+    constexpr size_t NOVA = 512;
+    constexpr size_t VEIL = 256;
+    constexpr size_t PULSE = 64;
+
+    constexpr size_t COSMIC_VOLUME = NOVA * VEIL * PULSE;
+
+    auto nebulaCore =
+        std::shared_ptr<int_fast32_t[]>(new int_fast32_t[COSMIC_VOLUME]);
+
+    for (size_t idx = 0; idx < COSMIC_VOLUME; ++idx)
+        nebulaCore[idx] = int_fast32_t(idx % 113);
+
+    tensor<int_fast32_t> StellarField(
+        nebulaCore,
+        COSMIC_VOLUME,
+        {NOVA, VEIL, PULSE});
+
+    auto ionFlux =
+        std::shared_ptr<int_fast32_t[]>(new int_fast32_t[VEIL]);
+
+    for (size_t lane = 0; lane < VEIL; ++lane)
+        ionFlux[lane] = int_fast32_t(lane % 17);
+
+    tensor<int_fast32_t> QuantumDrift(
+        ionFlux,
+        VEIL,
+        {1, VEIL, 1});
+
+    std::cout << "Broadcast test shapes:\n";
+    std::cout << "StellarField: 512 x 256 x 64\n";
+    std::cout << "QuantumDrift: 1 x 256 x 1\n\n";
+
+    time_block(
+        "Broadcast subtract StellarField - QuantumDrift",
+        [&]()
+        {
+            auto EventHorizon = StellarField - QuantumDrift;
+        });
 }

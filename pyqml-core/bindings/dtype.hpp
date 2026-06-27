@@ -1,6 +1,7 @@
 #pragma once
+// This header defines the native dtype enum and the type-mapping utilities used by the
+// bindings layer to bridge Python scalar types to the C++ tensor backend.
 #include <cmath>
-
 
 enum class DType
 {

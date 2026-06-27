@@ -10,8 +10,10 @@
 #include <cstring>
 #include <memory>
 #include "tensor_imp_files/itr.hpp"
+#include "thread/parallel.cpp"
 #include "tensor_imp_files/cuda_alloc.cu"
 using namespace detail;
+using namespace parallel_sync;
 
 using size_t = std::size_t;
 
@@ -69,19 +71,20 @@ class tensor
 public:
     using Data_type = T;
     static constexpr size_t NDIM = 8;
+    // This default constructor creates an empty tensor shell that can be populated later
+    // when a view or a concrete buffer is attached.
     explicit tensor() : data_(nullptr), dim_({}) {}
 
-    empty(const std::vector<size_t> dim_){
-        t_size = 0;
-        data_ = std::shared_ptr<T[]> buff(new T[])
-    }
-
+    // This constructor wraps an existing shared buffer with explicit logical dimensions and
+    // strides so the tensor can represent either contiguous data or a view over another buffer.
     tensor(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
            const size_t &ofst, const size_t &te_size) : data_(buffer), dim_(dims),
                                                         strides_(strides), offset(ofst), t_size(te_size)
     {
     }
 
+    // This constructor builds a tensor from a temporary vector and an explicit shape,
+    // making it convenient to materialize a contiguous tensor from host-side data.
     tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim)
 
     {
@@ -101,6 +104,8 @@ public:
         }
     }
 
+    // This constructor creates a tensor from a shared buffer and a known size, which is useful
+    // for compact representations of already allocated storage and for reshape-like operations.
     explicit tensor(std::shared_ptr<T[]> data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim)
     {
         strides_.resize(dim_.size());
@@ -138,7 +143,7 @@ public:
     }
     [[nodiscard]] std::shared_ptr<T[]> owner() const { return data_; }
 
-    [[nodiscard]] T at(const std::vector<int> &pos) const
+    [[nodiscard]] T &at(const std::vector<int> &pos)
     {
         size_t index, s_index;
         s_index = 0;
@@ -167,7 +172,6 @@ public:
     bool is_contiguous() const;
     [[nodiscard]] tensor<T> copy() const;
 
-
     template <typename Func>
     tensor<T> binary_op(const tensor<T> &a, const tensor<T> &b, Func op) const;
     tensor<T> operator+(const tensor<T> &b) const;
@@ -177,13 +181,13 @@ public:
     template <typename V, typename R>
     tensor<R> operator+(const tensor<V> &other);
     template <typename ElmOp>
-    tensor<T> reduce_op(int a, ElmOp&& op) const;
+    tensor<T> reduce_op(int a, ElmOp &&op) const;
     // unary ops
     template <typename ElmOp>
-    T reduce_op(ElmOp&& op);
+    T reduce_op(ElmOp &&op);
 
     template <typename ElmOp>
-    tensor<T> apply_op(ElmOp&& op);
+    tensor<T> apply_op(ElmOp &&op);
 
     tensor<T> max(int axis) const;
     tensor<T> min(int axis) const;
@@ -191,7 +195,6 @@ public:
     tensor<T> prod(int axis) const;
     tensor<T> mean(int axis) const;
     T sum() const;
-    T mean() const;
     T mean() const;
     T max() const;
     tensor<T> sin() const;
@@ -208,12 +211,6 @@ public:
     template <typename R>
     tensor<R> astype(bool copy = false) const;
     [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const;
-    // tensor<T> argmax(int u);
-    /*
-    tensor<T> sin() const;
-    tensor<T> cos() const;
-    tensor<T> exp() const;
-    */
 
     tensor<T> reshape(const std::vector<size_t> &shpe);
     /*

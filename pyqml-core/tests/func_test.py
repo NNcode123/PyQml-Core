@@ -1,7 +1,8 @@
 import pyqmlcore as pyq
 import numpy as np
 
-
+# This script exercises the core tensor API directly from Python to verify that the native
+# bindings produce results that agree with NumPy for a handful of representative operations.
 
 # dims
 D0, D1, D2 = 50, 40, 30   # smaller so you can debug easier

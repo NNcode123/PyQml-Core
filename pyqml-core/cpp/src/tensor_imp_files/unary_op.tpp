@@ -2,6 +2,8 @@
 #include <type_traits>
 #include <cmath>
 
+// This reduction helper collapses one axis of the tensor by applying the supplied operator
+// repeatedly across the selected dimension and storing the result in a reduced output tensor.
 template <typename T>
 template <typename ElmOp>
 
@@ -47,19 +49,21 @@ tensor<T> tensor<T>::reduce_op(int a, ElmOp &&op) const
 
         *out_data++ = res_val;
         data__ -= reset_val;
-        getIndex(itr, 0, inner_ind, data__);
+        advance(itr, 0, inner_ind, data__);
     }
 
     return tensor<T>(out, size_output, new_dim);
 }
 
+// This scalar-reduction helper walks the tensor and collapses all elements into a single
+// value by repeatedly applying the supplied operator, which is used for reductions such as sum and mean.
 template <typename T>
 template <typename ElmOp>
 T tensor<T>::reduce_op(ElmOp &&op)
 {
     T res = 0;
     const T *__restrict data = data_.get() + offset;
-    if is_contiguous ()
+    if (is_contiguous())
     {
         for (size_t i = 0; i < t_size; ++i)
         {
@@ -69,14 +73,13 @@ T tensor<T>::reduce_op(ElmOp &&op)
     else
     {
         AxisIter itr[tensor<T>::NDIM];
-        AxisIter itr[NDIM];
-        size_t out_ind = dim_.size()-1;
+        size_t out_ind = dim_.size() - 1;
         for (size_t j = 0; j < dim_.size(); ++j)
         {
             itr[j].advance = strides_[j];
             itr[j].reset_val = strides_[j] * (dim_[j] - 1);
             itr[j].dim = dim_[j];
-        }   
+        }
         for (size_t i = 0; i < t_size; ++i)
         {
             res = op(res, *data);
@@ -86,6 +89,8 @@ T tensor<T>::reduce_op(ElmOp &&op)
     return res;
 }
 
+// This helper applies a unary function to every element in the tensor and writes the results
+// into a new tensor with the same logical shape.
 template <typename T>
 template <typename ElmOp>
 tensor<T> tensor<T>::apply_op(ElmOp &&op)
@@ -95,8 +100,8 @@ tensor<T> tensor<T>::apply_op(ElmOp &&op)
     size_t size = t_size;
     std::shared_ptr<T[]> out(new T[size]);
     const T *__restrict out_data = out.get() + offset;
-    const T*__restrict data = data_.get() + offset;
-    if is_contiguous()
+    const T *__restrict data = data_.get() + offset;
+    if (is_contiguous())
     {
         for (size_t i = 0; i < t_size; ++i)
         {
@@ -106,14 +111,13 @@ tensor<T> tensor<T>::apply_op(ElmOp &&op)
     else
     {
         AxisIter itr[tensor<T>::NDIM];
-        AxisIter itr[NDIM];
-        size_t out_ind = dim_.size()-1;
+        size_t out_ind = dim_.size() - 1;
         for (size_t j = 0; j < dim_.size(); ++j)
         {
             itr[j].advance = strides_[j];
             itr[j].reset_val = strides_[j] * (dim_[j] - 1);
             itr[j].dim = dim_[j];
-        }   
+        }
         for (size_t i = 0; i < t_size; ++i)
         {
             *out_data++ = op(*data);
@@ -123,20 +127,17 @@ tensor<T> tensor<T>::apply_op(ElmOp &&op)
     return tensor<T>(out, size, n_shp);
 }
 
-
+// This method applies the exponential function to each element and returns a new tensor
+// with the same shape as the source tensor.
 template <typename T>
-tensor<T> tensor<T>::exp() const{
-    return apply_op([](const T& val) {return exp(val);});
+tensor<T> tensor<T>::exp() const
+{
+    return apply_op([](const T &val)
+                    { return exp(val); });
 }
 
-
-
-
-
-
-
-
-
+// This method reduces the tensor along the requested axis by taking the elementwise maximum
+// across that dimension and returns the reduced tensor as a new object.
 template <typename T>
 tensor<T> tensor<T>::max(int u) const
 {
@@ -144,6 +145,8 @@ tensor<T> tensor<T>::max(int u) const
                      { return std::max(a, b); });
 }
 
+// This method reduces the tensor along the requested axis by taking the elementwise minimum
+// across that dimension and returns the reduced tensor as a new object.
 template <typename T>
 
 tensor<T> tensor<T>::min(int u) const
@@ -152,17 +155,18 @@ tensor<T> tensor<T>::min(int u) const
                      { return std::min(a, b); });
 }
 
+// This method reduces the tensor along the requested axis by summing the values across that
+// dimension and returns the reduced tensor as a new object.
 template <typename T>
 
 tensor<T> tensor<T>::sum(int u) const
 {
     return reduce_op(u, [](const T &a, const T &b)
-                     { return a+b; });
+                     { return a + b; });
 }
 
-
-
-
+// This method converts the tensor values into a new scalar type and stores them in a new
+// tensor object, which is useful when callers need a different numeric representation.
 template <typename T>
 
 template <typename R>
@@ -203,8 +207,23 @@ tensor<R> tensor<T>::astype(bool copy) const
 
             *raw_new++ = static_cast<R>(*cur_ptr);
 
-            getIndex(itr, 0, ind_dim, cur_ptr);
+            advance(itr, 0, ind_dim, cur_ptr);
         }
     }
     return tensor<R>(new_ptr, t_size, dim_);
+}
+
+// This factory creates an uninitialized tensor with the requested shape, which is useful for
+// allocating storage before filling it through later logic or host-side initialization.
+template <typename T>
+
+tensor<T> empty(const std::vector<size_t> &shape)
+{
+    size_t size = 1;
+    for (auto &val : shape)
+    {
+        size *= val;
+    }
+    std::shared_ptr<T[]> data_(new T[size]);
+    return tensor<T>(std::shared_ptr<T[]>(new T[size]), size, shape);
 }

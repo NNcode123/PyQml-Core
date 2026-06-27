@@ -3,6 +3,8 @@
 #include "../tensor.hpp"
 #include <type_traits>
 
+// This method turns a set of indexing descriptors into an internal slice plan and iterator
+// state so the tensor can be traversed efficiently while applying slicing, indexing, or range semantics.
 template <typename T>
 std::pair<SlicePlan, std::vector<AxisIter>> tensor<T>::analyze_slices(const AxisType *inds, const size_t inds_size)
 
@@ -87,6 +89,8 @@ std::pair<SlicePlan, std::vector<AxisIter>> tensor<T>::analyze_slices(const Axis
     return {SlicePlan(new_dim, cur_index, new_data_size), axis_iter};
 }
 
+// This overload builds a lightweight slice plan for view-style indexing by computing the
+// new shape and strides required to reference the selected region without copying the data.
 template <typename T>
 SlicePlan tensor<T>::analyze_slices(const AxisView *inds, size_t inds_size)
 {
@@ -143,6 +147,8 @@ SlicePlan tensor<T>::analyze_slices(const AxisView *inds, size_t inds_size)
     return SlicePlan(std::move(new_dim), std::move(new_strides), cur_index);
 }
 
+// This method materializes a new tensor from a set of slice expressions and copies the
+// selected values into contiguous storage so the result can be used independently of the source.
 template <typename T>
 template <typename... Slices>
 [[nodiscard]] tensor<T> tensor<T>::slice(const Slices &...indices)
@@ -165,6 +171,8 @@ template <typename... Slices>
     return tensor<T>(new_data, new_data_size, new_dim);
 }
 
+// This method creates a view over the original tensor by adjusting the offset and strides
+// to point at the subset of data selected by the slice expressions.
 template <typename T>
 template <typename... Slices>
 [[nodiscard]] tensor<T> tensor<T>::slice_view(const Slices &...indices)
@@ -186,6 +194,8 @@ template <typename... Slices>
     return out;
 }
 
+// This helper detects when a tensor can be collapsed into a larger contiguous block and
+// reports the collapsed element count together with the axis where the collapse starts.
 template <typename T>
 std::pair<size_t, size_t> tensor<T>::collapse_size() const
 {
@@ -209,6 +219,8 @@ std::pair<size_t, size_t> tensor<T>::collapse_size() const
     }
     return {cur_size, offset};
 }
+// This helper checks whether the tensor's current strides match a standard contiguous layout,
+// which is important because many operations can be accelerated when that condition holds.
 template <typename T>
 bool tensor<T>::is_contiguous() const
 {
@@ -222,6 +234,8 @@ bool tensor<T>::is_contiguous() const
     return true;
 }
 
+// This method materializes a contiguous copy of the tensor so callers can safely operate on
+// data that may otherwise be represented as a view with non-standard strides.
 template <typename T>
 [[nodiscard]] tensor<T> tensor<T>::copy() const
 {
@@ -386,10 +400,10 @@ template <typename T>
                     src,
                     copy_size);
 
-        getIndex(iter, 0, radix_dim_pos, src);
+        advance(iter, 0, radix_dim_pos, src);
         data += cont_size;
     }
     // }
 
-    return tensor<T>(new_data, size(), dim_);
+    return tensor<T>(new_data, t_size, dim_);
 }

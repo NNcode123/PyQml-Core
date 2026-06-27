@@ -1,5 +1,7 @@
 #include "../tensor.hpp"
 
+// This helper renders a tensor recursively to an output stream so the contents can be
+// inspected in a readable nested form that mirrors the tensor's logical shape.
 template <typename T>
 void printTens(std::ostream &out, const tensor<T> &tensor, int64_t start, size_t depth = 1)
 {
@@ -59,6 +61,8 @@ void printTens(std::ostream &out, const tensor<T> &tensor, int64_t start, size_t
     out << "]";
 }
 
+// This helper builds a string representation of a tensor by reusing the recursive printer
+// and returning the resulting text in a form that is easy to display or debug.
 template <typename T>
 std::string get_str(const tensor<T> &tensor)
 {
