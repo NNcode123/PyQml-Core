@@ -5,6 +5,8 @@
 #include <condition_variable>
 #include <functional>
 
+// Thread pool design adapted from BS_thread_pool by bshoshany
+// https://github.com/bshoshany/thread-pool/blob/master/include/BS_thread_pool.hpp
 class threads
 {
     std::vector<std::thread> thread_workers;

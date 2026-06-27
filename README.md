@@ -33,6 +33,91 @@ The package is organized into three layers:
 - cpp/src/: the core tensor implementation, including slicing, broadcasting, reductions, and thread helpers.
 - tests/: small validation and benchmarking scripts used to exercise the module from Python.
 
+## Building from Source
+
+These instructions assume you are building from the repository root and that the source tree matches the repository layout shown above.
+
+### Prerequisites
+- CMake version 3.16 or newer.
+- A C++20 compatible compiler.
+- A C17 compatible C compiler.
+- Python 3.x with development headers.
+- `pybind11` installed.
+- NVIDIA CUDA Toolkit with the `nvcc` compiler installed.
+- OpenMP is optional. The project can build without OpenMP if it is unavailable.
+
+### Configure CMake
+From the repository root, create or enter the build folder under `cpp/src/build`:
+
+```bash
+cd cpp/src/build
+```
+
+Configure the project with CMake:
+
+```bash
+cmake -S . -B .
+```
+
+- `-S .` tells CMake to use the current directory as the source tree.
+- `-B .` tells CMake to write build files into the current directory.
+
+### Build the project
+Build the project in Release mode:
+
+```bash
+cmake --build . --config Release
+```
+
+- `cmake --build .` builds the generated project files using the selected generator.
+- `--config Release` requests the Release configuration for multi-configuration generators such as Visual Studio.
+
+### Python installation
+After a successful build, the generated `pyqmlcore` extension module is automatically copied into the detected Python environment's `site-packages` directory by the CMake build script.
+
+On Windows this will typically be a `.pyd` file; on Linux or macOS it will be the platform-specific shared library file.
+
+### Verify the installation
+Open Python and run:
+
+```python
+import pyqmlcore
+```
+
+If the import succeeds, the build and installation completed successfully.
+
+### Troubleshooting
+- `pybind11` not found
+  - Install `pybind11` and ensure CMake can locate it.
+  - You can override the path with `-Dpybind11_DIR=/path/to/pybind11/share/cmake/pybind11`.
+- Wrong Python interpreter
+  - Use `-DPython_EXECUTABLE=/path/to/python` to select the desired interpreter.
+- CUDA not found
+  - Install the CUDA Toolkit and make sure `nvcc` is available on your `PATH`.
+  - If detection fails, add `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
+- Compiler does not support C++20
+  - Use a newer compiler or set `-DCMAKE_CXX_COMPILER=/path/to/clang++` or the appropriate compiler path.
+- OpenMP not found
+  - OpenMP support is optional; the project can still build without it.
+- Stale CMake cache
+  - Delete `CMakeCache.txt` inside `cpp/src/build` or remove the build folder and rerun configuration.
+
+### CMake variables to override
+If automatic detection fails, pass one or more of these variables to CMake:
+
+```bash
+cmake -S . -B . \
+  -DPython_EXECUTABLE=/path/to/python \
+  -Dpybind11_DIR=/path/to/pybind11/share/cmake/pybind11 \
+  -DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda \
+  -DCMAKE_CXX_COMPILER=/path/to/clang++ \
+  -DCMAKE_C_COMPILER=/path/to/gcc
+```
+
+### Notes
+- The project currently targets C++20.
+- CUDA (NVCC) must be installed for CUDA-enabled builds.
+- This guide avoids hard-coded personal paths and is written for generic repository layouts.
 
 ### Memory Layout 
 
