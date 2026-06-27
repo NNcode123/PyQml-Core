@@ -1,5 +1,5 @@
 # PyQml-Core
-PyQml is a C++ backed Python module that supports efficient, scalable linear algebra operators for Quantum and Machine Learning(QML) focused projects.
+PyQml-Core is a C++-backed Python module that supports efficient, scalable linear algebra operations on tensors. In the Future, PyQml-Core will have native support for developing simulations of quantum circuits and basic ML models.
 
 ## Architecture
 ```text
