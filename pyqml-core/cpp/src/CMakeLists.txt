@@ -39,8 +39,14 @@ include_directories(${PROJECT_SOURCE_DIR}/cpp)
 message(STATUS "Project source dir is:  ${PROJECT_SOURCE_DIR}")
 
 
+
+
+
 # ---------------- TEST ----------------
 add_executable(test test.cpp)
+add_executable(test_2 ${PROJECT_SOURCE_DIR}/../../bindings/tens_test.cpp)
+target_link_libraries(test_2 PRIVATE pybind11::module)
+
 
 # only link OpenMP if it exists
 if(OpenMP_CXX_FOUND)

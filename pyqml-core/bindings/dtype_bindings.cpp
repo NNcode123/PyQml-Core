@@ -6,6 +6,7 @@ namespace py = pybind11;
 
 // This binding function exposes the DType enum to Python so tensor construction and
 // type conversion logic can be expressed through a consistent public interface.
+
 void bind_dtype(py::module_ &m)
 {
     py::enum_<DType>(m, "")

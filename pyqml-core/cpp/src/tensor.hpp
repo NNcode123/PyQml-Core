@@ -10,6 +10,7 @@
 #include <cstring>
 #include <memory>
 #include "tensor_imp_files/itr.hpp"
+#include "tensor_imp_files/tensor_metadata_util.hpp"
 #include "thread/parallel.cpp"
 #include "tensor_imp_files/cuda_alloc.cu"
 using namespace detail;
@@ -75,51 +76,28 @@ public:
     // when a view or a concrete buffer is attached.
     explicit tensor() : data_(nullptr), dim_({}) {}
 
-    // This constructor wraps an existing shared buffer with explicit logical dimensions and
-    // strides so the tensor can represent either contiguous data or a view over another buffer.
-    tensor(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
-           const size_t &ofst, const size_t &te_size) : data_(buffer), dim_(dims),
-                                                        strides_(strides), offset(ofst), t_size(te_size)
-    {
-    }
-
     // This constructor builds a tensor from a temporary vector and an explicit shape,
     // making it convenient to materialize a contiguous tensor from host-side data.
-    tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim)
+    tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim), offset(0)
 
     {
         data_ = std::shared_ptr<T[]>(new T[t_size]);
         // data_ = cuda_alloc<T>(data.size());
         std::move(data.begin(), data.end(), data_.get());
-        strides_.resize(dim_.size());
-        offset = 0;
-        for (size_t i = 0; i < strides_.size(); ++i)
-        {
-            int64_t cur_stride = 1;
-            for (size_t j = i + 1; j < strides_.size(); ++j)
-            {
-                cur_stride *= dim_[j];
-            }
-            strides_[i] = cur_stride;
-        }
+        fill_size_vec(dim, strides_);
     }
 
     // This constructor creates a tensor from a shared buffer and a known size, which is useful
     // for compact representations of already allocated storage and for reshape-like operations.
-    explicit tensor(std::shared_ptr<T[]> data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim)
+    tensor(std::shared_ptr<T[]> data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim), offset(0)
     {
-        strides_.resize(dim_.size());
-        offset = 0;
-        for (size_t i = 0; i < strides_.size(); ++i)
-        {
-            int64_t cur_stride = 1;
-            for (size_t j = i + 1; j < strides_.size(); ++j)
-            {
-                cur_stride *= dim_[j];
-            }
-            strides_[i] = cur_stride;
-        }
+
+        fill_size_vec(dim, strides_);
     }
+
+    // This constructor wraps an existing shared buffer with explicit logical dimensions and
+    // strides so the tensor can represent either contiguous data or a view over another buffer.
+    static tensor<T> tensor_view(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, size_t offset, size_t t_size);
 
     [[nodiscard]] size_t size() const
     {
@@ -213,12 +191,6 @@ public:
     [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const;
 
     tensor<T> reshape(const std::vector<size_t> &shpe);
-    /*
-        if one has a view with shape (8,14) then they do slice_view ((0,8,2), (0,14,2)) then offste is identical and strides are multiplied by 2
-        strides are (14,1) new strides are (28,2). Next reshape is applied since new size is now (4, 7) now reshape the tensor to (14, 2)
-        new strides are then (14, )
-        and reshape is applied
-    */
 
     /*
     tensor<double> power(const double &a)
@@ -246,3 +218,4 @@ public:
 #include "tensor_imp_files/binary_op.tpp"
 #include "tensor_imp_files/unary_op.tpp"
 #include "tensor_imp_files/getter.tpp"
+#pragma message("getter.tpp included successfully")

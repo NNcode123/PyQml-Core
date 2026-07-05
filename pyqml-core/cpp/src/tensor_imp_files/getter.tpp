@@ -70,3 +70,16 @@ std::string get_str(const tensor<T> &tensor)
     printTens(out, tensor, 0);
     return out.str();
 }
+
+template <typename T>
+tensor<T> tensor<T>::tensor_view(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
+                                 size_t ofst, size_t te_size)
+{
+    tensor<T> u;
+    u.data_ = buffer;
+    u.dim_ = dims;
+    u.strides_ = strides;
+    u.offset = ofst;
+    u.t_size = te_size;
+    return u;
+}

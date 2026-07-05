@@ -63,21 +63,10 @@ public:
     // Python-visible tensor objects can reference shared storage without copying the data.
     template <typename T>
     Tensor(const std::shared_ptr<T[]> &owner, std::vector<size_t> dim, DType type) : shape_(dim),
-                                                                                     offset(0), dtype(type)
+                                                                                     offset(0), dtype(type), size(calc_size(dim))
     {
-        int64_t stride = 1;
-        strides_.resize(dim.size());
-        for (int j = dim.size() - 1; j >= 0; --j)
-        {
-            strides_[j] = stride;
-            stride *= dim[j];
-        }
-        size_t v = 1;
-        for (const auto &val : dim)
-        {
-            v *= val;
-        }
-        size = v;
+
+        fill_size_vec(dim, strides_);
         data = std::static_pointer_cast<void>(owner);
         // data  = std::static_pointer_cast<void>(cuda_alloc<T>(size));
     }
@@ -85,22 +74,17 @@ public:
     // This constructor creates a view over an existing buffer with explicit strides and an
     // optional offset, which lets the wrapper represent slices and broadcasted views efficiently.
     template <typename T>
-    Tensor(const std::shared_ptr<T[]> &owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type)
+    Tensor(const std::shared_ptr<T[]> &owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type),
+                                                                                                                                                size(calc_size(dim))
     {
-
-        size_t v = 1;
-        for (const auto &val : dim)
-        {
-            v *= val;
-        }
-        size = v;
         data = std::static_pointer_cast<void>(owner);
     }
 
     // This constructor imports a pybind11 NumPy array into a Tensor wrapper while preserving
     // the requested logical shape and attached dtype metadata for downstream operations.
+
     template <typename T>
-    Tensor(const py::array_t<T, py::array::c_style | py::array::forcecast> &array, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type)
+    Tensor(const py::array_t<T, py::array::c_style | py::array::forcecast> &array, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
     {
         auto arr_info = array.request();
         T *ptr = static_cast<T *>(arr_info.ptr);
@@ -108,42 +92,18 @@ public:
 
         data = std::shared_ptr<T[]>(ptr, [owner](T *) mutable
                                     { owner = py::none(); });
-        int64_t stride = 1;
-        strides_.resize(dim.size());
-        for (int j = dim.size() - 1; j >= 0; --j)
-        {
-            strides_[j] = stride;
-            stride *= dim[j];
-        }
-        size_t v = 1;
-        for (const auto &val : dim)
-        {
-            v *= val;
-        }
-        size = v;
+        fill_size_vec(dim, strides_);
     }
 
     // This constructor materializes a tensor from a standard vector and shape description,
     // making it straightforward to build native tensors from Python lists or other host data.
     template <typename T>
-    Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type)
+    Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
     {
         auto ptr = std::shared_ptr<T[]>(new T[val.size()]);
         std::copy(val.begin(), val.end(), ptr.get());
         data = std::static_pointer_cast<void>(ptr);
-        int64_t stride = 1;
-        strides_.resize(dim.size());
-        for (int j = dim.size() - 1; j >= 0; --j)
-        {
-            strides_[j] = stride;
-            stride *= dim[j];
-        }
-        size_t v = 1;
-        for (const auto &val : dim)
-        {
-            v *= val;
-        }
-        size = v;
+        fill_size_vec(dim, strides_);
     }
 
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
@@ -159,8 +119,8 @@ public:
         std::shared_ptr<T[]> data_a (a.data, raw_a);
         U* raw_b = static_cast<U*>(b.data.get());
         std::shared_ptr<U[]> data_b (b.data, raw_b);
-        tensor<T> a_tens(data_a, a.shape_, a.strides_, a.offset, a.size);
-        tensor<U> b_tens(data_b, b.shape_, b.strides_, b.offset, b.size);
+        tensor<T> a_tens = tensor<T>::tensor_view(data_a, a.shape_, a.strides_, a.offset, a.size);
+        tensor<U> b_tens = tensor<U>::tensor_view(data_b, b.shape_, b.strides_, b.offset, b.size);
         DType result = (static_cast<int>(a.dtype) > static_cast<int>(b.dtype)) ? a.dtype: b.dtype;
         auto tens = opy(a_tens, b_tens);
         return Tensor(tens.owner(), tens.dim(), result); });
@@ -171,12 +131,13 @@ public:
     template <typename Prop>
     auto getProp(Prop &&prop)
     {
+
         return Tensor::dispatch(dtype, [&](auto val)
                                 {
             using T =std::decay_t<decltype(val)>;
             T* raw = static_cast<T*>(data.get());
             std::shared_ptr<T[]> data_n(data,raw);
-            tensor<T> tens(data_n, shape_, strides_, offset, size);
+            tensor<T> tens = tensor<T>::tensor_view(data_n,shape_, strides_, offset, size);
             return prop(tens); });
     }
     // This helper mirrors the data into the core tensor representation, applies a transform
@@ -189,7 +150,7 @@ public:
             using T =std::decay_t<decltype(val)>;
             T* raw = static_cast<T*>(data.get());
             std::shared_ptr<T[]> data_n(data,raw);
-            tensor<T> tens(data_n, shape_, strides_, offset, size);
+            tensor<T> tens = tensor<T>::tensor_view(data_n, shape_, strides_, offset, size);
             tensor<T> res_tens= prop(tens);
         return  Tensor(res_tens.owner(),res_tens.dim(),res_tens.strides(), dtype, res_tens.ofst()); });
     }
@@ -323,7 +284,7 @@ public:
         using U = std::decay_t<decltype(t2)>;
         T* raw_a = static_cast<T*>(data.get());
         std::shared_ptr<T[]> data_a (data, raw_a);
-        tensor<T> a_tens(data_a, shape_, strides_, offset, size);
+        tensor<T> a_tens = tensor<T>::tensor_view(data_a, shape_, strides_, offset, size);
         tensor<U> res = a_tens.template astype<U>(h);
         return Tensor(res.owner(), res.dim(), res.strides(), new_type, res.ofst()); });
     }
@@ -349,6 +310,7 @@ public:
 
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
+
     py::array to_numpy()
     {
         return Tensor::dispatch(dtype, [&](auto val)
@@ -394,3 +356,4 @@ public:
 };
 
 #include "Tensor_ops/free_ops.cpp"
+#include "dispatch.cpp"

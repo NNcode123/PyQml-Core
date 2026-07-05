@@ -50,13 +50,13 @@ These instructions assume you are building from the repository root and that the
 From the repository root, create or enter the build folder under `cpp/src/build`:
 
 ```bash
-cd cpp/src/build
+cd pyqml-core/cpp/src/
 ```
 
 Configure the project with CMake:
 
 ```bash
-cmake -S . -B .
+cmake -S . -B . build
 ```
 
 - `-S .` tells CMake to use the current directory as the source tree.
@@ -66,10 +66,10 @@ cmake -S . -B .
 Build the project in Release mode:
 
 ```bash
-cmake --build . --config Release
+cmake --build build --config Release
 ```
 
-- `cmake --build .` builds the generated project files using the selected generator.
+- `cmake --build build` builds the generated project files using the selected generator.
 - `--config Release` requests the Release configuration for multi-configuration generators such as Visual Studio.
 
 ### Python installation
@@ -106,7 +106,7 @@ If the import succeeds, the build and installation completed successfully.
 If automatic detection fails, pass one or more of these variables to CMake:
 
 ```bash
-cmake -S . -B . \
+cmake -S . -B build \
   -DPython_EXECUTABLE=/path/to/python \
   -Dpybind11_DIR=/path/to/pybind11/share/cmake/pybind11 \
   -DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda \
