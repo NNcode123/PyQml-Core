@@ -3,16 +3,6 @@
 #include "bindings.hpp"
 #include "../cpp/src/tensor.hpp"
 
-#define DISPATCH_DTYPE(DTYPE, Func) \
-    switch (DTYPE)                  \
-    {                               \
-    case DType::Int32:              \
-        using out_t = int32_t;      \
-        Func();                     \
-    case DType::Int64:              \
-        using out_t = int64_t;      \
-        Func();                     \
-    }
 
 class Tensor
 {
@@ -57,6 +47,15 @@ public:
         return dispatch(a, [&](auto ta)
                         { return dispatch(b, [&](auto tb)
                                           { return f(ta, tb); }); });
+    }
+
+    template <typename T>
+    tensor<T> get_typed_tensor() const
+    {
+        T *raw = static_cast<T *>(data.get());
+        std::shared_ptr<T[]> data_n(data, raw);
+        tensor<T> tens = tensor<T>::tensor_view(data_n, shape_, strides_, offset, size);
+        return tens;
     }
 
     // This constructor wraps an existing buffer with a logical tensor shape and dtype so
@@ -109,239 +108,83 @@ public:
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
     // inputs and then delegating to the core tensor implementation with the appropriate scalar types.
     template <typename Op>
-    static Tensor dispatchOp(const Tensor &a, const Tensor &b, Op &&opy)
-    {
-        return Tensor::disp_2(a.dtype, b.dtype, [&](auto t1, auto t2)
-                              {
-        using T = std::decay_t<decltype(t1)>;
-        using U = std::decay_t<decltype(t2)>;
-        T* raw_a = static_cast<T*>(a.data.get());
-        std::shared_ptr<T[]> data_a (a.data, raw_a);
-        U* raw_b = static_cast<U*>(b.data.get());
-        std::shared_ptr<U[]> data_b (b.data, raw_b);
-        tensor<T> a_tens = tensor<T>::tensor_view(data_a, a.shape_, a.strides_, a.offset, a.size);
-        tensor<U> b_tens = tensor<U>::tensor_view(data_b, b.shape_, b.strides_, b.offset, b.size);
-        DType result = (static_cast<int>(a.dtype) > static_cast<int>(b.dtype)) ? a.dtype: b.dtype;
-        auto tens = opy(a_tens, b_tens);
-        return Tensor(tens.owner(), tens.dim(), result); });
-    }
+    static Tensor dispatchOp(const Tensor &a, const Tensor &b, Op &&opy);
 
     // This helper provides a bridge from the wrapper tensor to the core tensor engine by
     // constructing a concrete tensor view with the current dtype and running a probe operation on it.
     template <typename Prop>
-    auto getProp(Prop &&prop)
-    {
-
-        return Tensor::dispatch(dtype, [&](auto val)
-                                {
-            using T =std::decay_t<decltype(val)>;
-            T* raw = static_cast<T*>(data.get());
-            std::shared_ptr<T[]> data_n(data,raw);
-            tensor<T> tens = tensor<T>::tensor_view(data_n,shape_, strides_, offset, size);
-            return prop(tens); });
-    }
+    auto getProp(Prop &&prop);
     // This helper mirrors the data into the core tensor representation, applies a transform
     // to produce a new tensor, and then re-wraps the result as a Python-facing Tensor object.
     template <typename Prop>
-    Tensor getTens(Prop &&prop)
-    {
-        return Tensor::dispatch(dtype, [&](auto val)
-                                {
-            using T =std::decay_t<decltype(val)>;
-            T* raw = static_cast<T*>(data.get());
-            std::shared_ptr<T[]> data_n(data,raw);
-            tensor<T> tens = tensor<T>::tensor_view(data_n, shape_, strides_, offset, size);
-            tensor<T> res_tens= prop(tens);
-        return  Tensor(res_tens.owner(),res_tens.dim(),res_tens.strides(), dtype, res_tens.ofst()); });
-    }
+    Tensor getTens(Prop &&prop);
     // This convenience method converts the tensor contents into a printable string so the
     // Python binding can expose a readable representation through __repr__.
-    std::string print_val()
-    {
-        return getProp([](auto &t)
-                       { return get_str(t); });
-    }
+    std::string print_val();
 
     // This wrapper reduces the tensor along a chosen axis and returns the maximum values as
     // a new Tensor with the reduced dimension removed.
-    Tensor max(int axis)
-    {
-        return getTens([&](auto &t)
-                       { return t.max(axis); });
-    }
+    Tensor max(int axis);
 
     // This wrapper reduces the tensor along a chosen axis and returns the minimum values as
     // a new Tensor, which is useful for summarizing data in a shape-preserving way.
-    Tensor min(int axis)
-    {
-        return getTens([&](auto &t)
-                       { return t.min(axis); });
-    }
-
+    Tensor min(int axis);
     // template <typename Slice ...>
 
     // This factory creates a tensor filled with a single scalar value and a requested dtype,
     // which is useful for initialization patterns such as ones, zeroes, and constant masks.
     template <typename T>
-    static Tensor fill(const std::vector<size_t> &shape, T value, DType type)
-    {
-
-        return Tensor::dispatch(type, [&](auto init_type)
-                                {
-            using R = std::decay_t<decltype(init_type)>;
-            size_t n_size = 1;
-            for (const auto& val: shape) {n_size *= val;}
-            std::shared_ptr<R[]> data_n(new R[n_size]);
-            std::fill(data_n.get(),data_n.get()+n_size,static_cast<R>(value));
-            return Tensor(data_n, shape, type); });
-    }
+    static Tensor fill(const std::vector<size_t> &shape, T value, DType type);
 
     // This factory constructs a tensor of ones so callers can initialize arrays with a
     // simple, explicit baseline value for numerical experiments and tests.
-    static Tensor ones(const std::vector<size_t> &shape, DType type)
-    {
-        return Tensor::fill(shape, 1, type);
-    }
+    static Tensor ones(const std::vector<size_t> &shape, DType type);
 
     // This factory constructs a tensor of zeroes so callers can initialize arrays with a
     // neutral value before populating them through later operations.
-    static Tensor zeroes(const std::vector<size_t> &shape, DType type)
-    {
-        return Tensor::fill(shape, 0, type);
-    }
+    static Tensor zeroes(const std::vector<size_t> &shape, DType type);
 
     // This factory builds a linearly spaced tensor from a start, end, and step value,
     // mirroring NumPy-style range generation for simple numerical utilities.
     template <typename T>
-    static Tensor arange(T start, T end, T step, DType dtype)
-    {
-
-        return Tensor::dispatch(dtype, [&](auto typing)
-                                {
-                                    using R = std::decay_t<decltype(typing)>;
-                                    size_t size = static_cast<size_t>(std::ceil((end - start) / (step)));
-                                    if ((start >= end && step > 0) || (start <= end && step < 0)) size = 0;
-                                    R strt = static_cast<R>(start);
-                                    R stp = static_cast<R>(step);
-                                    std::shared_ptr<R[]> out(new R[size]);
-                                    R *raw = out.get();
-                                    for (size_t j = 0; j < size; ++j)
-                                    {
-                                        *raw++ = strt;
-                                        strt += stp;
-                                    }
-                                    return Tensor(out, {size}, dtype); });
-    }
-
+    static Tensor arange(T start, T end, T step, DType dtype);
     // This method reshapes the logical tensor layout without changing the underlying data,
     // which is useful when a caller wants to reinterpret a flat buffer with a different shape.
-    Tensor reshape(const std::vector<size_t> &shape)
-    {
-
-        return getTens([&](auto &t)
-                       { return t.reshape(shape); });
-    }
+    Tensor reshape(const std::vector<size_t> &shape);
 
     // This overload implements elementwise addition between two tensors and returns a new
     // tensor that preserves the broadcasted shape of the operands.
-    Tensor operator+(const Tensor &other) const
-    {
-        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
-                          { return binary_ops(t_1, t_2, std::plus<>()); });
-    }
+    Tensor operator+(const Tensor &other) const;
 
     // This overload implements elementwise subtraction between two tensors and returns the
     // result as a new tensor with the broadcasted shape of the inputs.
-    Tensor operator-(const Tensor &other) const
-    {
-        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
-                          { return binary_ops(t_1, t_2, std::minus<>()); });
-    }
-
+    Tensor operator-(const Tensor &other) const;
     // This overload implements elementwise multiplication between two tensors and returns a
     // new tensor that reflects the broadcasted shape of the operands.
-    Tensor operator*(const Tensor &other) const
-    {
-        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
-                          { return binary_ops(t_1, t_2, std::multiplies<>()); });
-    }
-
+    Tensor operator*(const Tensor &other) const;
     // This overload implements elementwise division between two tensors and returns the
     // quotient as a new tensor while preserving the broadcasted shape semantics.
-    Tensor operator/(const Tensor &other) const
-    {
-        return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
-                          { return binary_ops(t_1, t_2, std::divides<>()); });
-    }
+    Tensor operator/(const Tensor &other) const;
 
     // This method converts the tensor to a different dtype and optionally copies the memory,
     // enabling explicit type control when interacting with Python or native code.
-    Tensor astype(DType new_type, bool h) const
-    {
-        return Tensor::disp_2(dtype, new_type, [&](auto t1, auto t2)
-                              {
-        using T = std::decay_t<decltype(t1)>;
-        using U = std::decay_t<decltype(t2)>;
-        T* raw_a = static_cast<T*>(data.get());
-        std::shared_ptr<T[]> data_a (data, raw_a);
-        tensor<T> a_tens = tensor<T>::tensor_view(data_a, shape_, strides_, offset, size);
-        tensor<U> res = a_tens.template astype<U>(h);
-        return Tensor(res.owner(), res.dim(), res.strides(), new_type, res.ofst()); });
-    }
+    Tensor astype(DType new_type, bool h) const;
 
     // This template method extracts a view or copy of the tensor using one or more slice
     // specifications, making the wrapper support the same selection patterns as NumPy.
     template <typename... Slices>
 
-    Tensor slice(const Slices &...slice_obj)
-    {
-        return getTens(dtype, [&](auto &tens)
-                       { return tens.slice(slice_obj...); });
-    }
+    Tensor slice(const Slices &...slice_obj);
 
     // This template method produces a lightweight view of the tensor for slicing operations
     // that should reuse the underlying storage rather than allocate a fresh copy.
     template <typename... Slice>
-    Tensor slice_view(const Slice &...slice_obj)
-    {
-        return getTens(dtype, [&](auto &tens)
-                       { return tens.slice_view(slice_obj...); });
-    }
+    Tensor slice_view(const Slice &...slice_obj);
 
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
 
-    py::array to_numpy()
-    {
-        return Tensor::dispatch(dtype, [&](auto val)
-                                {
-        using R = std::decay_t<decltype(val)>;
-
-
-        std::vector<int64_t> numpy_strides = strides_;
-        void * DATA = static_cast<R*>(data.get()) + offset;
-        std::transform(
-            numpy_strides.begin(),
-            numpy_strides.end(),
-            numpy_strides.begin(),
-            [](auto s) { return s * sizeof(R); }
-        );
-
-        std::vector<py::ssize_t> n_shape;
-        n_shape.reserve(shape_.size());
-        for (auto val: shape_)
-            n_shape.push_back(static_cast<py::ssize_t>(val));
-
-        return py::array(
-           py::memoryview::from_buffer(
-                DATA,                        // ptr
-                sizeof(R),                               // itemsize
-                py::format_descriptor<R>::value,      // dtype                       // ndim
-                n_shape,                        // shape
-                numpy_strides                            // strides (bytes)
-            )
-        ); });
-    }
+    py::array to_numpy();
 
     // This accessor returns the logical dtype of the tensor so callers can inspect how the
     // data is represented before performing additional operations.
@@ -355,5 +198,8 @@ public:
     std::vector<size_t> shape() const { return shape_; }
 };
 
+
+
+#include "dispatch_unary.hpp"
+#include "dispatch_binary.hpp"
 #include "Tensor_ops/free_ops.cpp"
-#include "dispatch.cpp"

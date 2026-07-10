@@ -190,7 +190,6 @@ public:
     tensor<R> astype(bool copy = false) const;
     [[nodiscard]] tensor<T> tensor_prod(const tensor<T> &other) const;
 
-    tensor<T> reshape(const std::vector<size_t> &shpe);
 
     /*
     tensor<double> power(const double &a)

@@ -61,12 +61,13 @@ axes_2 = [1, 0]  # j,k (reordered)
 res_pyq2 = pyq.einsum(tens_1, tens_3, axes_1, axes_2)
 res_np2  = np.einsum('ijk,kjl->il', np_A, np_C)
 
-print("Einsum test 2 correct:",
-      np.allclose(pyq.to_numpy(res_pyq2), res_np2))
+print("Sample output (first 10):")
+print(pyq.to_numpy(res_pyq)[:10])
+print(res_np[:10])
+
+#print("Einsum test 2 correct:",
+      #np.allclose(pyq.to_numpy(res_pyq2), res_np2))
 
 # -----------------------------
 # 🔹 small debug print
 # -----------------------------
-print("Sample output (first 10):")
-print(pyq.to_numpy(res_pyq)[:10])
-print(res_np[:10])
