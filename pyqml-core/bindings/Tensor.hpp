@@ -82,6 +82,7 @@ public:
     // This constructor imports a pybind11 NumPy array into a Tensor wrapper while preserving
     // the requested logical shape and attached dtype metadata for downstream operations.
 
+    
     template <typename T>
     Tensor(const py::array_t<T, py::array::c_style | py::array::forcecast> &array, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
     {
@@ -93,6 +94,7 @@ public:
                                     { owner = py::none(); });
         fill_size_vec(dim, strides_);
     }
+        
 
     // This constructor materializes a tensor from a standard vector and shape description,
     // making it straightforward to build native tensors from Python lists or other host data.

@@ -4,8 +4,8 @@
 
 
 #define BINARY_DISPATCH(a_tens, b_tens, ...)                                         \
-    PYQ_UNARY_TENSOR_DISPATCH(a_tens, using type1 = atype;                           \
-                              PYQ_UNARY_TENSOR_DISPATCH(b_tens, using type2 = atype; \
+    PYQ_UNARY_DISPATCH(a_tens.type(), using type1 = atype;                           \
+                              PYQ_UNARY_DISPATCH(b_tens.type(), using type2 = atype; \
                                                         __VA_ARGS__))
 
 #define BINARY_OP_DISPATCH(a_tens, b_tens, Op)                                                                                          \
@@ -15,6 +15,20 @@
                     DType result = (static_cast<int>(a_tens.type()) > static_cast<int>(b_tens.type())) ? a_tens.type() : b_tens.type(); \
                     auto res = Op(typed_a, typed_b);                                                                                    \
                     return Tensor(res.owner(), res.dim(), result);)
+
+
+
+#define TYPE_CAST_DISPATCH(tens, TYPE)\
+    PYQ_UNARY_DISPATCH(tens.type(), using type1 = atype;  \
+                            PYQ_UNARY_DISPATCH(TYPE, using type2 = atype;\
+                            auto typed_tens = tens.get_typed_tensor<type1>();\
+                            auto convert_tens = typed_tens.astype<type2>();\
+                            return Tensor(convert_tens.owner(), convert_tens.dim(), TYPE);\
+                            ))
+
+
+
+#define ASTYPE_MACRO()
 
 template <typename U, typename V, typename FUNC>
 Tensor op_Binary(const Tensor &a, const Tensor &b, FUNC &&op)
@@ -81,8 +95,9 @@ Tensor bin_op(const Tensor &a, const Tensor &b, Func &&op)
 
     // This method converts the tensor to a different dtype and optionally copies the memory,
     // enabling explicit type control when interacting with Python or native code.
-    Tensor Tensor::astype(DType new_type, bool h) const
+    Tensor Tensor::astype(DType new_type, [[maybe_unused]] bool h) const
     {
+        /*
         return Tensor::disp_2(dtype, new_type, [&](auto t1, auto t2)
                               {
         using T = std::decay_t<decltype(t1)>;
@@ -92,6 +107,8 @@ Tensor bin_op(const Tensor &a, const Tensor &b, Func &&op)
         tensor<T> a_tens = tensor<T>::tensor_view(data_a, shape_, strides_, offset, size);
         tensor<U> res = a_tens.template astype<U>(h);
         return Tensor(res.owner(), res.dim(), res.strides(), new_type, res.ofst()); });
+        */
+       TYPE_CAST_DISPATCH((*this), new_type)
     }
 
  

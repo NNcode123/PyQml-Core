@@ -199,6 +199,7 @@ Tensor Tensor::getTens(Prop &&prop)
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
 
+    
     py::array Tensor::to_numpy()
     {
         return Tensor::dispatch(dtype, [&](auto val)
@@ -230,3 +231,4 @@ Tensor Tensor::getTens(Prop &&prop)
             )
         ); });
     }
+        

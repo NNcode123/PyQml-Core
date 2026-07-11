@@ -15,7 +15,7 @@ void bind_tensor(py::module &m)
                          py::object type = py::none())
                       {
 
-        DType dtype = type.is_none() ? DType::NoneType : type.cast<DType>();
+        DType dtype = type.is_none() ? DType::Int32 : type.cast<DType>();
     
         py::array vals = py::array(data);
         auto dt = vals.dtype();

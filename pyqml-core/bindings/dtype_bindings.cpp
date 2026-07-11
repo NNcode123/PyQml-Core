@@ -9,8 +9,7 @@ namespace py = pybind11;
 
 void bind_dtype(py::module_ &m)
 {
-    py::enum_<DType>(m, "")
-        .value("uint8", DType::NoneType)
+    py::enum_<DType>(m, "pyq")
         .value("int8", DType::Int8)
         .value("int16", DType::Int16)
         .value("int32", DType::Int32)

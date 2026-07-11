@@ -1,11 +1,11 @@
 #pragma once
 // This header defines the native dtype enum and the type-mapping utilities used by the
 // bindings layer to bridge Python scalar types to the C++ tensor backend.
+#include <cstdint>
 #include <cmath>
 
 enum class DType
 {
-    NoneType,
     Int8,
     Int16,
     Int32,
