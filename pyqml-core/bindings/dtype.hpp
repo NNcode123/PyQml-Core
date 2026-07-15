@@ -14,18 +14,7 @@ enum class DType
     Float64,
 };
 
-enum class OpType
-{
 
-    Add,
-    Div,
-    Mul,
-    Sub,
-    MatMul,
-    TensorProd,
-    InnerProd,
-    concat
-};
 
 template <typename T>
 struct typeDType;

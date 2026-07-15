@@ -2,6 +2,10 @@
 #include "Tensor.hpp"
 #include "dispatch.hpp"
 
+
+
+
+
 /*
 template <typename Prop>
 Tensor getTens(Prop &&prop)
@@ -79,6 +83,7 @@ auto Tensor::getProp(Prop &&prop)
 template <typename Prop>
 Tensor Tensor::getTens(Prop &&prop)
     {
+        /*
         return Tensor::dispatch(dtype, [&](auto val)
                                 {
             using T =std::decay_t<decltype(val)>;
@@ -87,6 +92,8 @@ Tensor Tensor::getTens(Prop &&prop)
             tensor<T> tens = tensor<T>::tensor_view(data_n, shape_, strides_, offset, size);
             tensor<T> res_tens= prop(tens);
         return  Tensor(res_tens.owner(),res_tens.dim(),res_tens.strides(), dtype, res_tens.ofst()); });
+        */
+       GET_TENSOR_PROP((*this),std::forward<Prop>(prop) )
     }
     // This convenience method converts the tensor contents into a printable string so the
     // Python binding can expose a readable representation through __repr__.
@@ -200,35 +207,4 @@ Tensor Tensor::getTens(Prop &&prop)
     // can inspect or further process the native data without extra conversion helpers.
 
     
-    py::array Tensor::to_numpy()
-    {
-        return Tensor::dispatch(dtype, [&](auto val)
-                                {
-        using R = std::decay_t<decltype(val)>;
-
-
-        std::vector<int64_t> numpy_strides = strides_;
-        void * DATA = static_cast<R*>(data.get()) + offset;
-        std::transform(
-            numpy_strides.begin(),
-            numpy_strides.end(),
-            numpy_strides.begin(),
-            [](auto s) { return s * sizeof(R); }
-        );
-
-        std::vector<py::ssize_t> n_shape;
-        n_shape.reserve(shape_.size());
-        for (auto val: shape_)
-            n_shape.push_back(static_cast<py::ssize_t>(val));
-
-        return py::array(
-           py::memoryview::from_buffer(
-                DATA,                        // ptr
-                sizeof(R),                               // itemsize
-                py::format_descriptor<R>::value,      // dtype                       // ndim
-                n_shape,                        // shape
-                numpy_strides                            // strides (bytes)
-            )
-        ); });
-    }
-        
+   

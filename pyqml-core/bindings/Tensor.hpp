@@ -1,6 +1,5 @@
 #pragma once
 #include "dtype.hpp"
-#include "bindings.hpp"
 #include "../cpp/src/tensor.hpp"
 
 
@@ -83,18 +82,7 @@ public:
     // the requested logical shape and attached dtype metadata for downstream operations.
 
     
-    template <typename T>
-    Tensor(const py::array_t<T, py::array::c_style | py::array::forcecast> &array, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
-    {
-        auto arr_info = array.request();
-        T *ptr = static_cast<T *>(arr_info.ptr);
-        py::object owner = array;
-
-        data = std::shared_ptr<T[]>(ptr, [owner](T *) mutable
-                                    { owner = py::none(); });
-        fill_size_vec(dim, strides_);
-    }
-        
+    
 
     // This constructor materializes a tensor from a standard vector and shape description,
     // making it straightforward to build native tensors from Python lists or other host data.
@@ -109,8 +97,6 @@ public:
 
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
     // inputs and then delegating to the core tensor implementation with the appropriate scalar types.
-    template <typename Op>
-    static Tensor dispatchOp(const Tensor &a, const Tensor &b, Op &&opy);
 
     // This helper provides a bridge from the wrapper tensor to the core tensor engine by
     // constructing a concrete tensor view with the current dtype and running a probe operation on it.
@@ -186,7 +172,6 @@ public:
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
 
-    py::array to_numpy();
 
     // This accessor returns the logical dtype of the tensor so callers can inspect how the
     // data is represented before performing additional operations.
@@ -198,10 +183,23 @@ public:
     // This accessor returns the tensor shape so Python and C++ callers can inspect the
     // logical dimensions that describe the data layout.
     std::vector<size_t> shape() const { return shape_; }
+
+    std::vector<int64_t> strides() const {return strides_;}
+
+    size_t get_size() const {return size;}
+
+    size_t get_offset() const{return offset;}
+
+
+    std::shared_ptr<void> data_ptr() const {return data;}
+
+
+    
 };
 
 
 
 #include "dispatch_unary.hpp"
 #include "dispatch_binary.hpp"
+#include "python_interop.hpp"
 #include "Tensor_ops/free_ops.cpp"

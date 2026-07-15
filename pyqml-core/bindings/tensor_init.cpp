@@ -28,7 +28,7 @@ void bind_tensor(py::module &m)
             using R = std::decay_t<decltype(inst_t)>;
            py::array_t<R, py::array::c_style | py::array::forcecast> new_val =
         vals.cast<py::array_t<R, py::array::c_style | py::array::forcecast>>();
-            return Tensor(new_val, dim.cast<std::vector<size_t>>(), res_type );
+            return tensor_from_python(new_val,dim.cast<std::vector<size_t>>(), res_type );
         });
       
         return res; }),
@@ -70,7 +70,7 @@ void bind_tensor(py::module &m)
                 return Tensor::arange(n_st, n_ste, n_end, max_type);
             });
             return res; });
-    m.def("to_numpy", &Tensor::to_numpy);
+    m.def("to_numpy", &to_numpy);
     m.def("einsum", [&](const Tensor &a, const Tensor &b, py::object axes_a, py::object axes_b)
           { return einsum_(a, b, axes_a.cast<std::vector<int>>(), axes_b.cast<std::vector<int>>()); });
 }

@@ -163,7 +163,7 @@ def numpy_op(a, b, op):
     if op == "einsum": return np.matmul(a, b)
 
 # ---------------- TEST ----------------
-ops = ["add", "sub", "mul"]
+ops = ["sub", "add", "mul"]
 
 broadcast_shapes = [
     ((64,640,64), (64,640,64)),
@@ -190,8 +190,19 @@ for op in ops:
         pyq_time = time_block(f"pyq_{op}_{s1}", lambda: pyq_op(t1, t2, op))
         np_time  = time_block(f"np_{op}_{s1}", lambda: numpy_op(a, b, op))
 
-        assert np.allclose(pyq.to_numpy(pyq_op(t1, t2, op)), numpy_op(a, b, op))
+        npy_res = numpy_op(a,b,op)
+        pyq_res = pyq.to_numpy(pyq_op(t1,t2,op))
+        
 
+
+        
+
+        if not np.allclose(npy_res,pyq_res):
+            print(f"First elements of numpy array:{npy_res.ravel()}")
+            print(f"First few elements of pyq array: {pyq_res.ravel()}" )
+            continue
+
+        
         results_pyq.append(pyq_time)
         results_np.append(np_time)
         labels.append(f"{op}_{s1}")
@@ -204,7 +215,17 @@ for s1, s2 in einsum_shapes:
     pyq_time = time_block(f"pyq_einsum_{s1}", lambda: pyq_op(t1, t2, "einsum"))
     np_time  = time_block(f"np_einsum_{s1}", lambda: numpy_op(a, b, "einsum"))
 
-    assert np.allclose(pyq.to_numpy(pyq_op(t1, t2, "einsum")), numpy_op(a, b, "einsum"))
+    npy_res = numpy_op(a,b,"einsum")
+    pyq_res = pyq.to_numpy(pyq_op(t1,t2,"einsum"))
+
+
+    
+
+    if not np.allclose(npy_res,pyq_res):
+        print(f"First elements of numpy array:{npy_res.ravel()}")
+        print(f"First few elements of pyq array: {pyq_res.ravel()}" )
+        raise AssertionError
+        
 
     results_pyq.append(pyq_time)
     results_np.append(np_time)

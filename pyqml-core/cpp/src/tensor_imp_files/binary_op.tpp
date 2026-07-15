@@ -256,7 +256,7 @@ tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) 
         else
         {
 
-            size_t num_ths = 8;
+            size_t num_ths = pool.num_threads();
             size_t chunk = (size_output + num_ths - 1) / num_ths;
             for (int i = 0; i < num_ths; ++i)
             {
