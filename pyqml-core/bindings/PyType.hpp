@@ -1,5 +1,6 @@
 #pragma once
 #include "bindings.hpp"
+#include "../cpp/src/tensor.hpp"
 
 // This helper infers a native DType from a Python dtype object by matching it against
 // the supported scalar types and returning the corresponding enum value.
@@ -63,3 +64,6 @@ inline DType infer_types(py::object obj, bool obj_instance)
     }
     throw std::runtime_error("Unsupported object type");
 }
+
+
+inline 

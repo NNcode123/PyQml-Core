@@ -21,7 +21,7 @@ using size_t = std::size_t;
 struct Index
 {
     int64_t val;
-    inline Index(int64_t vals) : val(vals) {}
+
 };
 
 struct Range
@@ -39,21 +39,14 @@ struct Slice
     int64_t start;
     int64_t step;
     int64_t end;
-    Slice(int64_t s, int64_t e, int64_t st = 1) : start(s), end(e), step(st) {}
 };
 
 struct SlicePlan
 {
     std::vector<size_t> dim;
-    std::vector<size_t> counts;
     std::vector<int64_t> strides;
     size_t start_index;
     size_t size;
-
-    SlicePlan(std::vector<size_t> d, std::vector<size_t> cts, size_t s_index, size_t s) : dim(d), counts(cts), start_index(s_index), size(s) {}
-    SlicePlan(std::vector<size_t> d, size_t s_idx, size_t s) : dim(d), start_index(s_idx), size(s) {}
-    SlicePlan(std::vector<size_t> d, std::vector<int64_t> stride, size_t s_idx, size_t s) : dim(d), strides(stride), start_index(s_idx), size(s) {}
-    SlicePlan(std::vector<size_t> &&d, std::vector<int64_t> &&s, size_t s_idx) : dim(std::move(d)), strides(std::move(s)), start_index(s_idx) {}
 };
 
 using AxisType = std::variant<Index, Range, Slice>;

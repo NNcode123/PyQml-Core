@@ -190,7 +190,7 @@ Tensor Tensor::getTens(Prop &&prop)
 
     Tensor Tensor::slice(const Slices &...slice_obj)
     {
-        return getTens(dtype, [&](auto &tens)
+        return getTens([&](auto &tens)
                        { return tens.slice(slice_obj...); });
     }
 
@@ -199,7 +199,7 @@ Tensor Tensor::getTens(Prop &&prop)
     template <typename... Slice>
     Tensor Tensor::slice_view(const Slice &...slice_obj)
     {
-        return getTens(dtype, [&](auto &tens)
+        return getTens([&](auto &tens)
                        { return tens.slice_view(slice_obj...); });
     }
 

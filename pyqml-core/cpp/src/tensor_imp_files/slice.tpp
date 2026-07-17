@@ -86,7 +86,7 @@ std::pair<SlicePlan, std::vector<AxisIter>> tensor<T>::analyze_slices(const Axis
         }
     }
 
-    return {SlicePlan(new_dim, cur_index, new_data_size), axis_iter};
+    return {SlicePlan{.dim = std::move(new_dim),  .start_index = cur_index, .size = new_data_size,}, axis_iter};
 }
 
 // This overload builds a lightweight slice plan for view-style indexing by computing the
@@ -144,7 +144,7 @@ SlicePlan tensor<T>::analyze_slices(const AxisView *inds, size_t inds_size)
         }
     }
 
-    return SlicePlan(std::move(new_dim), std::move(new_strides), cur_index);
+    return SlicePlan{.dim = std::move(new_dim), .strides = std::move(new_strides), .start_index = cur_index};
 }
 
 // This method materializes a new tensor from a set of slice expressions and copies the
@@ -158,12 +158,12 @@ template <typename... Slices>
     std::vector<size_t> new_dim = std::move(plan.dim);
     int64_t cur_index = std::move(plan.start_index);
     size_t new_data_size = std::move(plan.size);
-    std::shared_ptr<T[]> new_data(new T[new_data_size], std::default_delete<T[]>());
-    const T *__restrict data_ptr = new_data.get();
-
+    std::shared_ptr<T[]> new_data(new T[new_data_size]);
+    T *__restrict new_data_ptr = new_data.get();
+    const T *__restrict data_ptr = data_.get();
     for (size_t i = 0; i < new_data_size; ++i)
     {
-        new_data[i] = data_ptr[cur_index];
+        new_data_ptr[i] = data_ptr[cur_index];
 
         cur_index = getIndex(Axis_Iter, new_dim, 0, new_dim.size() - 1, cur_index);
     }

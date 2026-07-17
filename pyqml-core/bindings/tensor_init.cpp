@@ -1,6 +1,7 @@
 
 #pragma once
 #include "Tensor.hpp"
+#include "python_interop.hpp"
 #include "PyType.hpp"
 
 // This helper registers the Tensor class and the high-level tensor operations with

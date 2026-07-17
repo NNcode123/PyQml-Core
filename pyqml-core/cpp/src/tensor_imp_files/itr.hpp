@@ -14,7 +14,7 @@ namespace detail
 
         // This helper returns the stride delta to apply for the selected axis, which makes the
         // iterator logic work for both regular and range-based indexing schemes.
-        int64_t next(size_t index)
+        int64_t next([[maybe_unused]] size_t index)
         {
             if (!diffs.empty())
             {

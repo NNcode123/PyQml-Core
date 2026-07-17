@@ -13,8 +13,9 @@ int main()
 
     Tensor tens(q, {10, 10, 2}, DType::Int32);
     Tensor tens_1(u, {10, 10, 2}, DType::Float32);
-    auto expr = tens - tens_1+(tens*tens_1)/(tens + tens_1 );
+    auto expr = tens + tens_1;
     auto expr_1 =  expr.astype(DType::Int32, false);
-    std::cout << expr.print_val() << std::endl;
-    std::cout << "integer_part: " << expr_1.print_val() << "\n";
+    auto expr_2 = expr.slice(Range({5,3,8}), Range({8,2,0}));
+    std::cout << expr_2.print_val() << "\n";
+   // std::cout << "integer_part: " << expr_1.print_val() << "\n";
 }
