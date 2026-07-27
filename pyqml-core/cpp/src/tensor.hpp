@@ -56,7 +56,7 @@ template <typename T>
 class tensor
 {
 
-    std::shared_ptr<T[]> data_;
+    pyq_intrusive_ptr<Storage> data_;
     size_t t_size;
     std::vector<size_t> dim_;
     std::vector<int64_t> strides_;
@@ -74,15 +74,15 @@ public:
     tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim), offset(0)
 
     {
-        data_ = std::shared_ptr<T[]>(new T[t_size]);
+        data_ = make_intrusive<Storage>(new int[data.size()], data.size());
         // data_ = cuda_alloc<T>(data.size());
-        std::move(data.begin(), data.end(), data_.get());
+        std::move(data.begin(), data.end(), data_. get<T>());
         fill_size_vec(dim, strides_);
     }
 
     // This constructor creates a tensor from a shared buffer and a known size, which is useful
     // for compact representations of already allocated storage and for reshape-like operations.
-    tensor(std::shared_ptr<T[]> data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim), offset(0)
+    tensor(const pyq_intrusive_ptr<Storage>& data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim), offset(0)
     {
 
         fill_size_vec(dim, strides_);
@@ -90,7 +90,7 @@ public:
 
     // This constructor wraps an existing shared buffer with explicit logical dimensions and
     // strides so the tensor can represent either contiguous data or a view over another buffer.
-    static tensor<T> tensor_view(std::shared_ptr<T[]> buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, size_t offset, size_t t_size);
+    static tensor<T> tensor_view(const pyq_intrusive_ptr<Storage>& buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, size_t offset, size_t t_size);
 
     [[nodiscard]] size_t size() const
     {
@@ -99,8 +99,9 @@ public:
     [[nodiscard]] std::vector<size_t> dim() const { return dim_; }
     [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
     [[nodiscard]] size_t ndim() { return dim_.size(); }
-    [[nodiscard]] T *data() const { return data_.get() + offset; }
-    [[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
+    [[nodiscard]] T *data() const { return data_.template get<T>() + offset; }
+    [[nodiscard]] pyq_intrusive_ptr<Storage> owner() const { return data_; }
+    //[[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
     [[nodiscard]] const std::vector<size_t> &shape() const { return dim_; }
     [[nodiscard]] size_t ofst() const { return offset; }
     [[nodiscard]] tensor<T> reshape(const std::vector<size_t> &newshape) const
@@ -112,19 +113,18 @@ public:
         tensor<T> cop_tens = copy();
         return tensor<T>(cop_tens.data_, cop_tens.t_size, newshape);
     }
-    [[nodiscard]] std::shared_ptr<T[]> owner() const { return data_; }
+
 
     [[nodiscard]] T &at(const std::vector<int> &pos)
     {
-        size_t index, s_index;
-        s_index = 0;
-        index = offset;
+        size_t index = 0, s_index = 0;
+      
         for (const auto &stride : strides_)
         {
             index += pos[s_index] * stride;
             s_index++;
         }
-        return (data_)[index];
+        return (data())[index];
     }
     template <typename... Indices>
     [[nodiscard]] T operator()(Indices... indices) const

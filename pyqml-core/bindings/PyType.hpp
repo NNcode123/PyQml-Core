@@ -7,7 +7,7 @@
 
 template <typename... Ts>
 
-DType inf_dtyp_python(py::dtype dt)
+inline DType inf_dtyp_python(py::dtype dt)
 {
     DType result;
     bool found = false;
@@ -66,4 +66,13 @@ inline DType infer_types(py::object obj, bool obj_instance)
 }
 
 
-inline 
+/*validate_ellipses()*/
+
+
+
+inline std::vector<AxisIter> process_slices(const Tensor& a, const py::args& args, size_t ndim){
+    for (auto obj: args){
+        /*...*/
+    }
+    return /*...*/;
+}

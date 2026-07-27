@@ -53,9 +53,15 @@ void bind_tensor(py::module &m)
            bool u_n = u;
             return a.astype(n_type,u_n); }, py::arg("dtype"), py::arg("copy") = false)
 
+        .def("__getitem__",[&](py::args args){
+            
+        } )
+
         .def_property_readonly("dtype", &Tensor::type)
 
         .def_property_readonly("shape", &Tensor::shape);
+
+        
 
     m.def("arange", [&](py::object start, py::object step, py::object end)
           {

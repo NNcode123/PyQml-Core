@@ -1,18 +1,23 @@
 #pragma once
 #include "dtype.hpp"
+#include "Autograd/Node.hpp"
 #include "../cpp/src/tensor.hpp"
+
+struct grad_meta;
 
 
 class Tensor
 {
 
-    std::shared_ptr<void> data;
+    pyq_intrusive_ptr<Storage> data;
+    
     std::vector<size_t> shape_;
     std::vector<int64_t> strides_;
     size_t size;
     size_t offset;
     DType dtype;
-    // std::shared_ptr<Node> grad_fn;
+    //pyq_intrusive_ptr<Node> grad_fn;
+    //grad_meta info;
 
 public:
     // This helper resolves a runtime DType into a concrete C++ scalar type and executes
@@ -51,31 +56,28 @@ public:
     template <typename T>
     tensor<T> get_typed_tensor() const
     {
-        T *raw = static_cast<T *>(data.get());
-        std::shared_ptr<T[]> data_n(data, raw);
-        tensor<T> tens = tensor<T>::tensor_view(data_n, shape_, strides_, offset, size);
+        //pyq_intrusive_ptr<Storage> data_n  = data;
+        tensor<T> tens = tensor<T>::tensor_view(data /*data*/, shape_, strides_, offset, size);
         return tens;
     }
 
     // This constructor wraps an existing buffer with a logical tensor shape and dtype so
     // Python-visible tensor objects can reference shared storage without copying the data.
-    template <typename T>
-    Tensor(const std::shared_ptr<T[]> &owner, std::vector<size_t> dim, DType type) : shape_(dim),
+    Tensor(const pyq_intrusive_ptr<Storage>&   owner, const std::vector<size_t>& dim, DType type) : shape_(dim),
                                                                                      offset(0), dtype(type), size(calc_size(dim))
     {
 
         fill_size_vec(dim, strides_);
-        data = std::static_pointer_cast<void>(owner);
-        // data  = std::static_pointer_cast<void>(cuda_alloc<T>(size));
+        data = owner;
+      
     }
 
     // This constructor creates a view over an existing buffer with explicit strides and an
     // optional offset, which lets the wrapper represent slices and broadcasted views efficiently.
-    template <typename T>
-    Tensor(const std::shared_ptr<T[]> &owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type),
+    Tensor(const pyq_intrusive_ptr<Storage>& owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type),
                                                                                                                                                 size(calc_size(dim))
     {
-        data = std::static_pointer_cast<void>(owner);
+        data = owner;
     }
 
     // This constructor imports a pybind11 NumPy array into a Tensor wrapper while preserving
@@ -89,9 +91,8 @@ public:
     template <typename T>
     Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
     {
-        auto ptr = std::shared_ptr<T[]>(new T[val.size()]);
-        std::copy(val.begin(), val.end(), ptr.get());
-        data = std::static_pointer_cast<void>(ptr);
+        data = make_intrusive<Storage,T>(new T[val.size()], val.size());
+        std::copy(val.begin(), val.end(), data.template get<T>());
         fill_size_vec(dim, strides_);
     }
 
@@ -191,14 +192,12 @@ public:
     size_t get_offset() const{return offset;}
 
 
-    std::shared_ptr<void> data_ptr() const {return data;}
+    pyq_intrusive_ptr<Storage> data_ptr() const {return data;}
 
 
     
 };
 
 
-
-#include "dispatch_unary.hpp"
 #include "dispatch_binary.hpp"
-#include "Tensor_ops/free_ops.cpp"
+#include "dispatch_unary.hpp"

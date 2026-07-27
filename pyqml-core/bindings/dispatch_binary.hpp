@@ -5,7 +5,6 @@
 
 
 
-#define ASTYPE_MACRO()
 
 template <typename U, typename V, typename FUNC>
 Tensor op_Binary(const Tensor &a, const Tensor &b, FUNC &&op)

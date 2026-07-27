@@ -1,5 +1,4 @@
-#include "../Tensor.hpp"
-#include "../dispatch.hpp"
+#include "../dispatch_binary.hpp"
 
 // This wrapper forwards an einsum-style contraction to the core tensor implementation
 // while preserving the Tensor-level interface used by the Python bindings.

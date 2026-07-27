@@ -73,9 +73,8 @@ auto Tensor::getProp(Prop &&prop)
         return Tensor::dispatch(dtype, [&](auto val)
                                 {
             using T =std::decay_t<decltype(val)>;
-            T* raw = static_cast<T*>(data.get());
-            std::shared_ptr<T[]> data_n(data,raw);
-            tensor<T> tens = tensor<T>::tensor_view(data_n,shape_, strides_, offset, size);
+           
+            tensor<T> tens = tensor<T>::tensor_view(data,shape_, strides_, offset, size);
             return prop(tens); });
     }
     // This helper mirrors the data into the core tensor representation, applies a transform
@@ -119,6 +118,14 @@ Tensor Tensor::getTens(Prop &&prop)
                        { return t.min(axis); });
     }
 
+    /*
+    Tensor unbroadcast(
+    const Tensor& grad,
+    const std::vector<int64_t>& original_shape
+    );
+    */
+
+
     // template <typename Slice ...>
 
     // This factory creates a tensor filled with a single scalar value and a requested dtype,
@@ -132,8 +139,9 @@ Tensor Tensor::getTens(Prop &&prop)
             using R = std::decay_t<decltype(init_type)>;
             size_t n_size = 1;
             for (const auto& val: shape) {n_size *= val;}
-            std::shared_ptr<R[]> data_n(new R[n_size]);
-            std::fill(data_n.get(),data_n.get()+n_size,static_cast<R>(value));
+            pyq_intrusive_ptr<Storage> data_n(new R[n_size], n_size);
+            R* buf = data_n.template get<R>();
+            std::fill(buf,buf+n_size,static_cast<R>(value));
             return Tensor(data_n, shape, type); });
     }
 
@@ -164,8 +172,8 @@ Tensor Tensor::getTens(Prop &&prop)
                                     if ((start >= end && step > 0) || (start <= end && step < 0)) size = 0;
                                     R strt = static_cast<R>(start);
                                     R stp = static_cast<R>(step);
-                                    std::shared_ptr<R[]> out(new R[size]);
-                                    R *raw = out.get();
+                                    pyq_intrusive_ptr<Storage> out(new R[size], size);
+                                    R *raw = out.template get<R>();
                                     for (size_t j = 0; j < size; ++j)
                                     {
                                         *raw++ = strt;

@@ -29,9 +29,9 @@ tensor<T> tensor<T>::reduce_op(int a, ElmOp &&op) const
         size_output *= dim_[ind];
     }
 
-    std::shared_ptr<T[]> out(new T[size_output], std::default_delete<T[]>());
-    T *__restrict out_data = out.get();
-    const T *__restrict data__ = data_.get() + offset;
+    pyq_intrusive_ptr<Storage> out(new T[size_output], size_output);
+    T *__restrict out_data = out.template get<T>();
+    const T *__restrict data__ = data_.template get<T>() + offset;
 
     int64_t inner_stride = strides_[a];
     int64_t reset_val = inner_stride * inner_size;
@@ -62,7 +62,7 @@ template <typename ElmOp>
 T tensor<T>::reduce_op(ElmOp &&op)
 {
     T res = 0;
-    const T *__restrict data = data_.get() + offset;
+    const T *__restrict data = data_.template get<T>() + offset;
     if (is_contiguous())
     {
         for (size_t i = 0; i < t_size; ++i)
@@ -98,9 +98,9 @@ tensor<T> tensor<T>::apply_op(ElmOp &&op)
     T res = 0;
     std::vector<size_t> n_shp = dim_;
     size_t size = t_size;
-    std::shared_ptr<T[]> out(new T[size]);
-    const T *__restrict out_data = out.get() + offset;
-    const T *__restrict data = data_.get() + offset;
+    pyq_intrusive_ptr<Storage> out(new T[size], size);
+    const T *__restrict out_data = out.template get<T>() + offset;
+    const T *__restrict data = data_.template get<T>() + offset;
     if (is_contiguous())
     {
         for (size_t i = 0; i < t_size; ++i)
@@ -187,9 +187,9 @@ tensor<R> tensor<T>::astype(bool copy) const
         itr[j].dim = dim_[j];
     }
 
-    std::shared_ptr<R[]> new_ptr(new R[t_size], std::default_delete<R[]>());
-    R *__restrict raw_new = new_ptr.get();
-    const T *__restrict cur_ptr = data_.get() + offset;
+    pyq_intrusive_ptr<Storage> new_ptr(new R[t_size], t_size);
+    R *__restrict raw_new = new_ptr.template get<R>();
+    const T *__restrict cur_ptr = data_.template get<T>() + offset;
     size_t ind_dim = dim_.size() - 1;
 
     if (is_contiguous())
@@ -224,6 +224,6 @@ tensor<T> empty(const std::vector<size_t> &shape)
     {
         size *= val;
     }
-    std::shared_ptr<T[]> data_(new T[size]);
-    return tensor<T>(std::shared_ptr<T[]>(new T[size]), size, shape);
+    pyq_intrusive_ptr<Storage> data(new T[size], size);
+    return tensor<T>(data, size, shape);
 }
