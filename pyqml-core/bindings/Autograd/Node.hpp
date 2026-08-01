@@ -4,11 +4,12 @@
 #include "../../Storage/intrusive_ptr.hpp"
 #include <unordered_map>
 #include <queue>
+#include <unique_ptr>
 
 
-/*
 
-Hash out the specifics later mkay great let's roll.
+
+//Hash out the specifics later mkay great let's roll.
 
 struct Edge{
 
@@ -17,6 +18,7 @@ struct Edge{
     size_t int_nr = 0; 
 
 };
+
 
 
 class Tensor;
@@ -34,7 +36,7 @@ struct Node: public refcount
 
 struct grad_meta{
 
-    //Tensor grad;
+    std::unique_ptr<Tensor> grad;
     bool requires_grad = false;
     bool is_lef = false;
     bool retain_grad = false;

@@ -67,7 +67,7 @@ static Tensor arange(T start, T end, T step, DType dtype)
 
 
 template <typename Prop>
-auto Tensor::getProp(Prop &&prop)
+auto Tensor::getProp(Prop &&prop) const
     {
 
         return Tensor::dispatch(dtype, [&](auto val)
@@ -80,7 +80,7 @@ auto Tensor::getProp(Prop &&prop)
     // This helper mirrors the data into the core tensor representation, applies a transform
     // to produce a new tensor, and then re-wraps the result as a Python-facing Tensor object.
 template <typename Prop>
-Tensor Tensor::getTens(Prop &&prop)
+Tensor Tensor::getTens(Prop &&prop) const
     {
         /*
         return Tensor::dispatch(dtype, [&](auto val)
@@ -196,7 +196,7 @@ Tensor Tensor::getTens(Prop &&prop)
 
     template <typename... Slices>
 
-    Tensor Tensor::slice(const Slices &...slice_obj)
+    Tensor Tensor::slice(const Slices &...slice_obj) const
     {
         return getTens([&](auto &tens)
                        { return tens.slice(slice_obj...); });
@@ -205,7 +205,7 @@ Tensor Tensor::getTens(Prop &&prop)
     // This template method produces a lightweight view of the tensor for slicing operations
     // that should reuse the underlying storage rather than allocate a fresh copy.
     template <typename... Slice>
-    Tensor Tensor::slice_view(const Slice &...slice_obj)
+    Tensor Tensor::slice_view(const Slice &...slice_obj) const
     {
         return getTens([&](auto &tens)
                        { return tens.slice_view(slice_obj...); });

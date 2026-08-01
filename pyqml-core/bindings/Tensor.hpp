@@ -102,11 +102,11 @@ public:
     // This helper provides a bridge from the wrapper tensor to the core tensor engine by
     // constructing a concrete tensor view with the current dtype and running a probe operation on it.
     template <typename Prop>
-    auto getProp(Prop &&prop);
+    auto getProp(Prop &&prop) const;
     // This helper mirrors the data into the core tensor representation, applies a transform
     // to produce a new tensor, and then re-wraps the result as a Python-facing Tensor object.
     template <typename Prop>
-    Tensor getTens(Prop &&prop);
+    Tensor getTens(Prop &&prop) const;
     // This convenience method converts the tensor contents into a printable string so the
     // Python binding can expose a readable representation through __repr__.
     std::string print_val();
@@ -163,12 +163,12 @@ public:
     // specifications, making the wrapper support the same selection patterns as NumPy.
     template <typename... Slices>
 
-    Tensor slice(const Slices &...slice_obj);
+    Tensor slice(const Slices &...slice_obj) const;
 
     // This template method produces a lightweight view of the tensor for slicing operations
     // that should reuse the underlying storage rather than allocate a fresh copy.
     template <typename... Slice>
-    Tensor slice_view(const Slice &...slice_obj);
+    Tensor slice_view(const Slice &...slice_obj) const;
 
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
