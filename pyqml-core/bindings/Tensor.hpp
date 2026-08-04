@@ -1,9 +1,13 @@
 #pragma once
 #include "dtype.hpp"
 #include "Autograd/Node.hpp"
+#include <memory>
 #include "../cpp/src/tensor.hpp"
 
-struct grad_meta;
+
+
+class Node;
+class grad_meta;
 
 
 class Tensor
@@ -16,8 +20,8 @@ class Tensor
     size_t size;
     size_t offset;
     DType dtype;
-    //pyq_intrusive_ptr<Node> grad_fn;
-    //grad_meta info;
+    pyq_intrusive_ptr<Node> grad_fn;
+    std::shared_ptr<grad_meta> info;
 
 public:
     // This helper resolves a runtime DType into a concrete C++ scalar type and executes
@@ -99,6 +103,7 @@ public:
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
     // inputs and then delegating to the core tensor implementation with the appropriate scalar types.
 
+
     // This helper provides a bridge from the wrapper tensor to the core tensor engine by
     // constructing a concrete tensor view with the current dtype and running a probe operation on it.
     template <typename Prop>
@@ -145,15 +150,23 @@ public:
     // tensor that preserves the broadcasted shape of the operands.
     Tensor operator+(const Tensor &other) const;
 
+    Tensor& operator+=(const Tensor& other);
+
     // This overload implements elementwise subtraction between two tensors and returns the
     // result as a new tensor with the broadcasted shape of the inputs.
     Tensor operator-(const Tensor &other) const;
+
+    Tensor& operator-=(const Tensor&other );
     // This overload implements elementwise multiplication between two tensors and returns a
     // new tensor that reflects the broadcasted shape of the operands.
     Tensor operator*(const Tensor &other) const;
+
+    Tensor& operator*=(const Tensor &other) const;
     // This overload implements elementwise division between two tensors and returns the
     // quotient as a new tensor while preserving the broadcasted shape semantics.
     Tensor operator/(const Tensor &other) const;
+
+    Tensor& operator/(const Tensor& other);
 
     // This method converts the tensor to a different dtype and optionally copies the memory,
     // enabling explicit type control when interacting with Python or native code.
@@ -191,8 +204,9 @@ public:
 
     size_t get_offset() const{return offset;}
 
-
     pyq_intrusive_ptr<Storage> data_ptr() const {return data;}
+
+
 
 
     

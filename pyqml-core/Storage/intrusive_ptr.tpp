@@ -2,7 +2,7 @@
 
 
 template <typename T>
-requires IS_REF_COUNTED< T>
+
 pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(pyq_intrusive_ptr<T>&& other) noexcept{
     if (this != &other){
         if (storage){
@@ -17,7 +17,7 @@ pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(pyq_intrusive_ptr<T>&& oth
 }
 
 template <typename T>
-requires IS_REF_COUNTED< T>
+
 pyq_intrusive_ptr<T>::pyq_intrusive_ptr(const pyq_intrusive_ptr<T>& other): storage(other.storage){
     if (other.storage){
     other.storage->incref();
@@ -26,7 +26,7 @@ pyq_intrusive_ptr<T>::pyq_intrusive_ptr(const pyq_intrusive_ptr<T>& other): stor
 
 
 template <typename T>
-requires IS_REF_COUNTED< T>
+
 pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(const pyq_intrusive_ptr<T>& other ) noexcept {
 
     if (this != &other){
@@ -47,7 +47,7 @@ pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(const pyq_intrusive_ptr<T>
 
 
 template<typename T>
-requires IS_REF_COUNTED< T>
+
 pyq_intrusive_ptr<T>::pyq_intrusive_ptr(pyq_intrusive_ptr<T>&& other): storage(other.storage){
     other.storage = nullptr;
 
@@ -57,7 +57,7 @@ pyq_intrusive_ptr<T>::pyq_intrusive_ptr(pyq_intrusive_ptr<T>&& other): storage(o
 
 
 template <typename T>
-requires IS_REF_COUNTED< T>
+
 pyq_intrusive_ptr<T>::~pyq_intrusive_ptr(){
     if (storage){
         //std::cout << "calling destructor on underlying storage: " << storage << std::endl;
@@ -68,13 +68,13 @@ pyq_intrusive_ptr<T>::~pyq_intrusive_ptr(){
 
 
 template <typename T>
-requires IS_REF_COUNTED<T>
+
 pyq_intrusive_ptr<T> make_intrusive(void *p, void(*dtor)(void* u), size_t size){
     return pyq_intrusive_ptr<T>(new T(p,dtor, size));
 }
 
 template <typename T, typename buff_type>
-requires IS_REF_COUNTED<T>
+
 pyq_intrusive_ptr<T> make_intrusive(buff_type* p, size_t size){
     return pyq_intrusive_ptr<T>(new T(p, size));
 }

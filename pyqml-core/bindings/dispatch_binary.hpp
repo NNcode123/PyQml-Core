@@ -80,6 +80,7 @@ Tensor Tensor::operator+(const Tensor &other) const
     // new tensor that reflects the broadcasted shape of the operands.
     Tensor Tensor::operator*(const Tensor &other) const
     {
+        
         BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
                            { return binary_ops(t_1, t_2, std::multiplies<>()); });}
     
@@ -91,5 +92,13 @@ Tensor Tensor::operator+(const Tensor &other) const
         BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
                            { return binary_ops(t_1, t_2, std::divides<>()); });}
     
+    Tensor& Tensor::operator+=(const Tensor& other){
+        if (!data){
+            *this = other;
+            return *this;
+        }
+        *this = *this + other;
+        return *this;
+    }
 
 

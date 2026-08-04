@@ -76,7 +76,6 @@ template <typename Der>
 concept IS_REF_COUNTED = std::is_base_of_v<refcount, Der>;
 
 template <typename T>
-requires IS_REF_COUNTED<T>
 class pyq_intrusive_ptr{
 
     T* storage;
@@ -102,6 +101,10 @@ class pyq_intrusive_ptr{
         U* get() const {
             return storage->template get_typed<U>();
         }
+
+        explicit operator bool() const noexcept {
+         return storage != nullptr;
+        }   
 
 
 
