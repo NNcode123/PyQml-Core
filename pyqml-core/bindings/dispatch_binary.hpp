@@ -53,6 +53,10 @@ Tensor bin_op(const Tensor &a, const Tensor &b, Func &&op)
     // enabling explicit type control when interacting with Python or native code.
     Tensor Tensor::astype(DType new_type, [[maybe_unused]] bool h) const
     {
+
+       if (dtype == new_type){
+        return *this;
+       }
     
        TYPE_CAST_DISPATCH((*this), new_type)
     }

@@ -33,6 +33,8 @@ struct AddNode: Node {
 
         */
 
+        return {Tensor::unbroadcast(grads[0], info[0].shape ), Tensor::unbroadcast(grads[0], info[0].shape)};
+
 
         
         

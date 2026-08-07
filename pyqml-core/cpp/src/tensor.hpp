@@ -98,7 +98,7 @@ public:
     }
     [[nodiscard]] std::vector<size_t> dim() const { return dim_; }
     [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
-    [[nodiscard]] size_t ndim() { return dim_.size(); }
+    [[nodiscard]] size_t ndim() const { return dim_.size(); }
     [[nodiscard]] T *data() const { return data_.template get<T>() + offset; }
     [[nodiscard]] pyq_intrusive_ptr<Storage> owner() const { return data_; }
     //[[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
@@ -152,7 +152,7 @@ public:
     template <typename V, typename R>
     tensor<R> operator+(const tensor<V> &other);
     template <typename ElmOp>
-    tensor<T> reduce_op(int a, ElmOp &&op) const;
+    tensor<T> reduce_op(const std::vector<int>& a, ElmOp &&op, bool keepdim = false) const;
     // unary ops
     template <typename ElmOp>
     T reduce_op(ElmOp &&op);
@@ -160,11 +160,11 @@ public:
     template <typename ElmOp>
     tensor<T> apply_op(ElmOp &&op);
 
-    tensor<T> max(int axis) const;
-    tensor<T> min(int axis) const;
-    tensor<T> sum(int axis) const;
-    tensor<T> prod(int axis) const;
-    tensor<T> mean(int axis) const;
+    tensor<T> max(const std::vector<int>& axis) const;
+    tensor<T> min(const std::vector<int>& axis) const;
+    tensor<T> sum(const std::vector<int>& axis, bool keepdim = true) const;
+    tensor<T> prod(const std::vector<int>& axis) const;
+    tensor<T> mean(const std::vector<int>& axis) const;
     T sum() const;
     T mean() const;
     T max() const;

@@ -104,7 +104,7 @@ Tensor Tensor::getTens(Prop &&prop) const
 
     // This wrapper reduces the tensor along a chosen axis and returns the maximum values as
     // a new Tensor with the reduced dimension removed.
-    Tensor Tensor::max(int axis)
+    Tensor Tensor::max(const std::vector<int>& axis) const
     {
         return getTens([&](auto &t)
                        { return t.max(axis); });
@@ -112,10 +112,16 @@ Tensor Tensor::getTens(Prop &&prop) const
 
     // This wrapper reduces the tensor along a chosen axis and returns the minimum values as
     // a new Tensor, which is useful for summarizing data in a shape-preserving way.
-    Tensor Tensor::min(int axis)
+    Tensor Tensor::min(const std::vector<int>& axis) const
     {
         return getTens([&](auto &t)
                        { return t.min(axis); });
+    }
+
+    Tensor Tensor::sum(const std::vector<int>& axis, bool keepdim) const{
+        return getTens([&](auto& t){
+            return t.sum(axis, keepdim);
+        });
     }
 
     /*
@@ -134,15 +140,11 @@ Tensor Tensor::getTens(Prop &&prop) const
      Tensor Tensor::fill(const std::vector<size_t> &shape, T value, DType type)
     {
 
-        return Tensor::dispatch(type, [&](auto init_type)
-                                {
-            using R = std::decay_t<decltype(init_type)>;
-            size_t n_size = 1;
-            for (const auto& val: shape) {n_size *= val;}
-            pyq_intrusive_ptr<Storage> data_n(new R[n_size], n_size);
-            R* buf = data_n.template get<R>();
-            std::fill(buf,buf+n_size,static_cast<R>(value));
-            return Tensor(data_n, shape, type); });
+        PYQ_UNARY_DISPATCH(type, 
+            auto t_value = static_cast<atype>(value);
+            auto t_tensor = typed_fill(shape, t_value);
+            return Tensor(t_tensor.owner(), shape, type)
+        )
     }
 
     // This factory constructs a tensor of ones so callers can initialize arrays with a
@@ -184,7 +186,7 @@ Tensor Tensor::getTens(Prop &&prop) const
 
     // This method reshapes the logical tensor layout without changing the underlying data,
     // which is useful when a caller wants to reinterpret a flat buffer with a different shape.
-    Tensor Tensor::reshape(const std::vector<size_t> &shape)
+    Tensor Tensor::reshape(const std::vector<size_t> &shape) 
     {
 
         return getTens([&](auto &t)
@@ -214,5 +216,17 @@ Tensor Tensor::getTens(Prop &&prop) const
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
 
-    
+    Tensor Tensor::unbroadcast(const Tensor& in, const std::vector<size_t>& shape){
+        std::vector<size_t> orig_shape = in.shape_;
+        std::vector<int> bdims;
+
+        for (size_t i = 0; i < orig_shape.size(); ++i){
+            if (orig_shape[i] != 1 && shape[i] == 1){
+                bdims.push_back(i);
+            }
+        }
+
+        return in.sum(bdims);
+
+    }
    

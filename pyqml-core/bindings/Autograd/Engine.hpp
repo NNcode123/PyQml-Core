@@ -65,9 +65,10 @@ struct Engine {
 
 
 
-        std::vector<size_t> shape = {3,4,5};
+        std::vector<size_t> shape = start->info[0].shape;
+        auto Type = start->info[0].type;
 
-        buffer[start] = {Tensor::ones(shape,DType::Int32 )};
+        buffer[start] = {Tensor::ones(shape, Type )};
 
         while (!tasks.empty()){
 

@@ -7,49 +7,78 @@
 template <typename T>
 template <typename ElmOp>
 
-tensor<T> tensor<T>::reduce_op(int a, ElmOp &&op) const
+tensor<T> tensor<T>::reduce_op(const std::vector<int>& axes, ElmOp &&op, bool  keepdim) const
 {
-    AxisIter itr[NDIM];
-    size_t size_output = 1;
-    size_t inner_size = dim_[a];
-    size_t inner_ind = dim_.size() - 2;
-    std::vector<size_t> new_dim = dim_;
-    new_dim.erase(new_dim.begin() + a);
+    AxisIter free[NDIM];
+    AxisIter contract[NDIM];
+    bool is_free[NDIM];
 
-    for (size_t i = 0; i < dim_.size() - 1; ++i)
-    {
-        int ind = i;
-        if (i >= a)
-        {
-            ++ind;
+    
+    size_t size_output = 1;
+    
+
+    std::vector<size_t> new_dim;
+    size_t ndims =  ndim();
+    size_t inner_ind = ndims - 1 - axes.size();
+    size_t free_i = 0, cont_i = 0, inner_size = 1;
+
+
+    for (int u = 0; u < ndims; ++u){
+        is_free[u] = true;
+    }
+
+    for (int i  = 0; i < axes.size(); ++i ){
+        is_free[axes[i]] = false;
+    }
+
+    for (size_t a = 0; a < ndims; ++a){
+        if (!keepdim && !is_free[a]){
+            continue;
         }
-        itr[i].advance = strides_[ind];
-        itr[i].reset_val = (dim_[ind] - 1) * strides_[ind];
-        itr[i].dim = dim_[ind];
-        size_output *= dim_[ind];
+        new_dim.push_back(is_free[a] ? dim_[a]: 1);
+    }
+
+
+
+    for (size_t ind = 0; ind < ndims ; ++ind)
+    {
+        if (is_free[ind]){
+
+            free[free_i].advance = strides_[ind];
+            free[free_i].reset_val = (dim_[ind] - 1) * strides_[ind];
+            free[free_i].dim = dim_[ind];
+            size_output *= dim_[ind];
+            free_i ++;
+        }
+        else{
+
+
+            contract[cont_i].advance = strides_[ind];
+            contract[cont_i].reset_val = (dim_[ind]-1) * strides_[ind];
+            contract[cont_i].dim = dim_[ind];
+            inner_size *= dim_[ind];
+            cont_i += 1;
+        }
+        
     }
 
     pyq_intrusive_ptr<Storage> out(new T[size_output], size_output);
     T *__restrict out_data = out.template get<T>();
-    const T *__restrict data__ = data_.template get<T>() + offset;
+    const T *__restrict data__ = data();
 
-    int64_t inner_stride = strides_[a];
-    int64_t reset_val = inner_stride * inner_size;
     T res_val;
     for (size_t j = 0; j < size_output; ++j)
     {
         res_val = *data__;
-        data__ += inner_stride;
+        advance(contract, 0, axes.size()-1, data__);
         for (size_t i = 1; i < inner_size; ++i)
         {
             res_val = op(res_val, *data__);
-
-            data__ += inner_stride;
+            advance(contract, 0, axes.size()-1, data__);
         }
 
         *out_data++ = res_val;
-        data__ -= reset_val;
-        advance(itr, 0, inner_ind, data__);
+        advance(free, 0, inner_ind, data__);
     }
 
     return tensor<T>(out, size_output, new_dim);
@@ -139,7 +168,7 @@ tensor<T> tensor<T>::exp() const
 // This method reduces the tensor along the requested axis by taking the elementwise maximum
 // across that dimension and returns the reduced tensor as a new object.
 template <typename T>
-tensor<T> tensor<T>::max(int u) const
+tensor<T> tensor<T>::max(const std::vector<int>& u) const
 {
     return reduce_op(u, [](const T &a, const T &b)
                      { return std::max(a, b); });
@@ -149,7 +178,7 @@ tensor<T> tensor<T>::max(int u) const
 // across that dimension and returns the reduced tensor as a new object.
 template <typename T>
 
-tensor<T> tensor<T>::min(int u) const
+tensor<T> tensor<T>::min(const std::vector<int>& u) const
 {
     return reduce_op(u, [](const T &a, const T &b)
                      { return std::min(a, b); });
@@ -159,10 +188,10 @@ tensor<T> tensor<T>::min(int u) const
 // dimension and returns the reduced tensor as a new object.
 template <typename T>
 
-tensor<T> tensor<T>::sum(int u) const
+tensor<T> tensor<T>::sum(const std::vector<int> & u, bool keepdim) const
 {
     return reduce_op(u, [](const T &a, const T &b)
-                     { return a + b; });
+                     { return a + b; }, keepdim);
 }
 
 // This method converts the tensor values into a new scalar type and stores them in a new
@@ -226,4 +255,28 @@ tensor<T> empty(const std::vector<size_t> &shape)
     }
     pyq_intrusive_ptr<Storage> data(new T[size], size);
     return tensor<T>(data, size, shape);
+}
+
+template <typename T>
+
+tensor<T> typed_fill(const std::vector<size_t>& shape, T value){
+     size_t n_size = 1;
+     for (const auto& val: shape) {n_size *= val;}
+     pyq_intrusive_ptr<Storage> data_n(new R[n_size], n_size);
+     R* buf = data_n.template get<R>();
+     std::fill(buf,buf+n_size,static_cast<R>(value));
+    return tensor<T>(data_n, n_size, shape); 
+}
+
+template <typename T> 
+tensor<T> typed_zeroes(const std::vector<size_t>& shape){
+    T zero{0};
+    return fill(shape, zero);
+}
+
+
+template <typename T>
+tensor<T> typed_ones(const std::vector<size_t>& shape){
+    T one{1};
+    return fill(shape, ones);
 }

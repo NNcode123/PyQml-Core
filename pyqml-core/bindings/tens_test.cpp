@@ -49,6 +49,7 @@ void build_nested_views(const Tensor &base, std::vector<Tensor> *out)
 
 int main()
 {
+    /*
     std::vector<int32_t> values(1024);
     std::iota(values.begin(), values.end(), 1);
 
@@ -101,4 +102,96 @@ int main()
 
     std::cout << "pathological view suite completed" << std::endl;
     return 0;
+    */
+
+    std::vector<int64_t> data(100);
+
+for (int64_t i = 0; i < 100; ++i)
+    data[i] = i + 1;
+
+Tensor t(data, {2, 5, 2, 5}, DType::Int64);
+
+std::cout << "=============================\n";
+std::cout << "Original Tensor\n";
+std::cout << "=============================\n"
+          << t.print_val() << "\n";
+
+//------------------------------------
+// Sum axis {1}
+//------------------------------------
+
+Tensor out1 = t.sum({1}, false);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({1}, false)\n";
+std::cout << "=============================\n"
+          << out1.print_val() << "\n";
+
+Tensor out2 = t.sum({1}, true);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({1}, true)\n";
+std::cout << "=============================\n"
+          << out2.print_val() << "\n";
+
+//------------------------------------
+// Sum axes {1,3}
+//------------------------------------
+
+Tensor out3 = t.sum({1,3}, false);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({1,3}, false)\n";
+std::cout << "=============================\n"
+          << out3.print_val() << "\n";
+
+Tensor out4 = t.sum({1,3}, true);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({1,3}, true)\n";
+std::cout << "=============================\n"
+          << out4.print_val() << "\n";
+
+//------------------------------------
+// Sum axes {0,2,3}
+//------------------------------------
+
+Tensor out5 = t.sum({0,2,3}, false);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({0,2,3}, false)\n";
+std::cout << "=============================\n"
+          << out5.print_val() << "\n";
+
+Tensor out6 = t.sum({0,2,3}, true);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({0,2,3}, true)\n";
+std::cout << "=============================\n"
+          << out6.print_val() << "\n";
+
+//------------------------------------
+// Sum all axes
+//------------------------------------
+
+
+/*
+
+Tensor out7 = t.sum({0,1,2,3}, false);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({0,1,2,3}, false)\n";
+std::cout << "=============================\n"
+          << out7.print_val() << "\n";
+
+Tensor out8 = t.sum({0,1,2,3}, true);
+
+std::cout << "\n=============================\n";
+std::cout << "sum({0,1,2,3}, true)\n";
+std::cout << "=============================\n"
+          << out8.print_val() << "\n";
+
+          */
+
+return 0;
 }

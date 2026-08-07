@@ -118,12 +118,14 @@ public:
 
     // This wrapper reduces the tensor along a chosen axis and returns the maximum values as
     // a new Tensor with the reduced dimension removed.
-    Tensor max(int axis);
+    Tensor max(const std::vector<int> & axis) const;
 
     // This wrapper reduces the tensor along a chosen axis and returns the minimum values as
     // a new Tensor, which is useful for summarizing data in a shape-preserving way.
-    Tensor min(int axis);
+    Tensor min(const std::vector<int> & axis) const;
     // template <typename Slice ...>
+
+    Tensor sum(const std::vector<int>& axis, bool keepdim = true) const;
 
     // This factory creates a tensor filled with a single scalar value and a requested dtype,
     // which is useful for initialization patterns such as ones, zeroes, and constant masks.
@@ -170,7 +172,7 @@ public:
 
     // This method converts the tensor to a different dtype and optionally copies the memory,
     // enabling explicit type control when interacting with Python or native code.
-    Tensor astype(DType new_type, bool h) const;
+    Tensor astype(DType new_type,[[maybe_unused]] bool copy = true) const;
 
     // This template method extracts a view or copy of the tensor using one or more slice
     // specifications, making the wrapper support the same selection patterns as NumPy.
@@ -185,6 +187,8 @@ public:
 
     // This method exports the tensor into a NumPy-compatible pybind11 array so Python code
     // can inspect or further process the native data without extra conversion helpers.
+
+    static Tensor unbroadcast(const Tensor& in, const std::vector<size_t>& old_shape);
 
 
     // This accessor returns the logical dtype of the tensor so callers can inspect how the
@@ -205,6 +209,8 @@ public:
     size_t get_offset() const{return offset;}
 
     pyq_intrusive_ptr<Storage> data_ptr() const {return data;}
+
+
 
 
 

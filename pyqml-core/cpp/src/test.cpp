@@ -1081,7 +1081,7 @@ int main()
 
     std::cout << A_V << "\n\n";
     std::cout << res_f << std::endl;
-    std::cout << "Arg_max along axis 0 " << A_V.max(1) << std::endl;
+    std::cout << "Arg_max along axis 0 " << A_V.max({1}) << std::endl;
     std::cout << B_V << "\n\n";
 
     std::cout << "C_V" << C_V << "\n\n";
