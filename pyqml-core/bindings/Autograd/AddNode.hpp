@@ -33,7 +33,10 @@ struct AddNode: Node {
 
         */
 
-        return {Tensor::unbroadcast(grads[0], info[0].shape ), Tensor::unbroadcast(grads[0], info[0].shape)};
+        auto da = Tensor::unbroadcast(grads[0], info[0].shape);
+        auto db = Tensor::unbroadcast(grads[0], info[1].shape);
+
+        return {da.astype(info[0].type), db.astype(info[1].type)};
 
 
         

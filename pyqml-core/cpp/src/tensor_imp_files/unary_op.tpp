@@ -122,7 +122,7 @@ T tensor<T>::reduce_op(ElmOp &&op)
 // into a new tensor with the same logical shape.
 template <typename T>
 template <typename ElmOp>
-tensor<T> tensor<T>::apply_op(ElmOp &&op)
+tensor<T> tensor<T>::apply_op(ElmOp &&op) const
 {
     T res = 0;
     std::vector<size_t> n_shp = dim_;
@@ -154,6 +154,66 @@ tensor<T> tensor<T>::apply_op(ElmOp &&op)
         }
     }
     return tensor<T>(out, size, n_shp);
+}
+
+template <typename T>
+template <typename R>
+tensor<T> tensor<T>::operator+(R value) const
+{
+    return apply_op([&](const T &a)
+                    { return a + static_cast<T>(value); });
+}
+
+template <typename T>
+template <typename R>
+tensor<T> tensor<T>::operator-(R value) const
+{
+    return apply_op([&](const T &a)
+                    { return a - static_cast<T>(value); });
+}
+
+template <typename T>
+template <typename R>
+tensor<T> tensor<T>::operator*(R value) const
+{
+    return apply_op([&](const T &a)
+                    { return a * static_cast<T>(value); });
+}
+
+template <typename T>
+template <typename R>
+tensor<T> tensor<T>::operator/(R value) const
+{
+    return apply_op([&](const T &a)
+                    { return a / static_cast<T>(value); });
+}
+
+template <typename T, typename R>
+tensor<T> operator+(R value, const tensor<T> &t)
+{
+    return t.apply_op([&](const T &a)
+                      { return static_cast<T>(value) + a; });
+}
+
+template <typename T, typename R>
+tensor<T> operator-(R value, const tensor<T> &t)
+{
+    return t.apply_op([&](const T &a)
+                      { return static_cast<T>(value) - a; });
+}
+
+template <typename T, typename R>
+tensor<T> operator*(R value, const tensor<T> &t)
+{
+    return t.apply_op([&](const T &a)
+                      { return static_cast<T>(value) * a; });
+}
+
+template <typename T, typename R>
+tensor<T> operator/(R value, const tensor<T> &t)
+{
+    return t.apply_op([&](const T &a)
+                      { return static_cast<T>(value) / a; });
 }
 
 // This method applies the exponential function to each element and returns a new tensor

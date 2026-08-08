@@ -152,21 +152,33 @@ public:
     // tensor that preserves the broadcasted shape of the operands.
     Tensor operator+(const Tensor &other) const;
 
+    template <typename R>
+    Tensor operator+(R value) const;
+
     Tensor& operator+=(const Tensor& other);
 
     // This overload implements elementwise subtraction between two tensors and returns the
     // result as a new tensor with the broadcasted shape of the inputs.
     Tensor operator-(const Tensor &other) const;
 
+    template <typename R>
+    Tensor operator-(R value) const;
+
     Tensor& operator-=(const Tensor&other );
     // This overload implements elementwise multiplication between two tensors and returns a
     // new tensor that reflects the broadcasted shape of the operands.
     Tensor operator*(const Tensor &other) const;
 
+    template <typename R>
+    Tensor operator*(R value) const;
+
     Tensor& operator*=(const Tensor &other) const;
     // This overload implements elementwise division between two tensors and returns the
     // quotient as a new tensor while preserving the broadcasted shape semantics.
     Tensor operator/(const Tensor &other) const;
+
+    template <typename R>
+    Tensor operator/(R value) const;
 
     Tensor& operator/(const Tensor& other);
 

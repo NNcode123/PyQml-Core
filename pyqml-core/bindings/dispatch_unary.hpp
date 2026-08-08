@@ -124,6 +124,62 @@ Tensor Tensor::getTens(Prop &&prop) const
         });
     }
 
+    template <typename R>
+    Tensor Tensor::operator+(R value) const
+    {
+        return getTens([&](auto &t)
+                       { return t.operator+(value); });
+    }
+
+    template <typename R>
+    Tensor Tensor::operator-(R value) const
+    {
+        return getTens([&](auto &t)
+                       { return t.operator-(value); });
+    }
+
+    template <typename R>
+    Tensor Tensor::operator*(R value) const
+    {
+        return getTens([&](auto &t)
+                       { return t.operator*(value); });
+    }
+
+    template <typename R>
+    Tensor Tensor::operator/(R value) const
+    {
+        return getTens([&](auto &t)
+                       { return t.operator/(value); });
+    }
+
+    template <typename R>
+    Tensor operator+(R value, const Tensor &t)
+    {
+        return t.getTens([&](auto &inner)
+                         { return inner.operator+(value); });
+    }
+
+    template <typename R>
+    Tensor operator-(R value, const Tensor &t)
+    {
+        return t.getTens([&](auto &inner)
+                         { return inner.operator-(value); });
+    }
+
+    template <typename R>
+    Tensor operator*(R value, const Tensor &t)
+    {
+        return t.getTens([&](auto &inner)
+                         { return inner.operator*(value); });
+    }
+
+    template <typename R>
+    Tensor operator/(R value, const Tensor &t)
+    {
+        return t.getTens([&](auto &inner)
+                         { return inner.operator/(value); });
+    }
+
     /*
     Tensor unbroadcast(
     const Tensor& grad,

@@ -158,7 +158,16 @@ public:
     T reduce_op(ElmOp &&op);
 
     template <typename ElmOp>
-    tensor<T> apply_op(ElmOp &&op);
+    tensor<T> apply_op(ElmOp &&op) const;
+
+    template <typename R>
+    tensor<T> operator+(R value) const;
+    template <typename R>
+    tensor<T> operator-(R value) const;
+    template <typename R>
+    tensor<T> operator*(R value) const;
+    template <typename R>
+    tensor<T> operator/(R value) const;
 
     tensor<T> max(const std::vector<int>& axis) const;
     tensor<T> min(const std::vector<int>& axis) const;
