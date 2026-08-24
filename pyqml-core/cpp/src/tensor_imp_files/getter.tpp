@@ -72,7 +72,7 @@ std::string get_str(const tensor<T> &tensor)
 }
 
 template <typename T>
-tensor<T> tensor<T>::tensor_view(const pyq_intrusive_ptr<Storage>& buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
+tensor<T> tensor<T>::tensor_view(const StorageRef& buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides,
                                  size_t ofst, size_t te_size)
 {
     tensor<T> u;

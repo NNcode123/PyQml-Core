@@ -11,7 +11,7 @@ struct Edge{
 
     /*
         Input slot within the parent Node's gradient buffer.
-
+        Only applies for operations that return multiple tensors. 
         
     */
     size_t input_nr = 0;

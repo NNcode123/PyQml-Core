@@ -1,6 +1,7 @@
 
 #include "Tensor.hpp"
 #include "dispatch.hpp"
+#include "Autograd/attach_grad_binary.hpp"
 
 
 
@@ -67,7 +68,7 @@ Tensor bin_op(const Tensor &a, const Tensor &b, Func &&op)
 
 Tensor Tensor::operator+(const Tensor &other) const
     {
-        return bin_op(*this, other, [&](auto &t_1, auto &t_2)
+        auto Tens = bin_op(*this, other, [&](auto &t_1, auto &t_2)
                       { return binary_ops(t_1, t_2, std::plus<>()); });
     }
 
@@ -77,8 +78,10 @@ Tensor Tensor::operator+(const Tensor &other) const
         /*return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
                           { return binary_ops(t_1, t_2, std::minus<>()); });*/
 
-        BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                           { return binary_ops(t_1, t_2, std::minus<>()); });}
+        auto Tens =[this, other]()->Tensor{ BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
+                           { return binary_ops(t_1, t_2, std::minus<>()); }); } ();
+       Attach_Grad(Tens,Sub,(*this),other)
+    }
 
     // This overload implements elementwise multiplication between two tensors and returns a
     // new tensor that reflects the broadcasted shape of the operands.
@@ -86,7 +89,9 @@ Tensor Tensor::operator+(const Tensor &other) const
     {
         
         BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                           { return binary_ops(t_1, t_2, std::multiplies<>()); });}
+                           { return binary_ops(t_1, t_2, std::multiplies<>()); });
+                        }
+
     
 
     // This overload implements elementwise division between two tensors and returns the

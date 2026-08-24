@@ -7,7 +7,7 @@ struct MulNode: public Node {
 
     Tensor rhs;
 
-    MulNode(std::vector<Edge>&& funcs, const Tensor & a, const Tensor & b): Node(std::move(funcs)), lhs(a), rhs(b) {}
+    MulNode(std::vector<Edge>&& funcs, std::vector<InputMetadata>&& info, const Tensor & a, const Tensor & b): Node(std::move(funcs), std::move(info)), lhs(a), rhs(b) {}
 
 
     std::vector<Tensor> backward(std::vector<Tensor>&& args){

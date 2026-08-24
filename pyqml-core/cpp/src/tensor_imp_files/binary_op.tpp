@@ -88,8 +88,8 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func &&op)
 
     auto res_dim = Itr_info.res_dim;
     std::size_t size_output = Itr_info.size_output;
-    pyq_intrusive_ptr<Storage> out(new R[size_output], size_output);
-    R *__restrict out_data = out.template get<R>();
+    StorageRef out(new R[size_output], size_output);
+    R *__restrict out_data = out.data_ptr<R>();
     const V *__restrict b_data = b.data();
     const T *__restrict a_data = a.data();
     const size_t a_size = a.size();
@@ -188,13 +188,13 @@ tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) 
     auto res_dim = std::move(Itr_info.res_dim);
     auto size_output = Itr_info.size_output;
 
-    pyq_intrusive_ptr<Storage> out(new T[size_output], size_output);
+    StorageRef out(new T[size_output], size_output);
 
-    const T *__restrict b_data = b.data_.template get<T>() + b.offset;
-    const T *__restrict a_data = a.data_.template get<T>() + a.offset;
+    const T *__restrict b_data = b.data_.data_ptr<T>() + b.offset;
+    const T *__restrict a_data = a.data_.data_ptr<T>() + a.offset;
     size_t a_size = a.t_size;
     size_t b_size = b.t_size;
-    T *__restrict out_data = out.template get<T>();
+    T *__restrict out_data = out.data_ptr<T>();
 
     size_t ind_max = res_dim.size() - 1;
 
@@ -369,11 +369,11 @@ template <typename T>
 
     const size_t this_size = size();
     const size_t other_size = other.size();
-    const T *__restrict A_data = A.data_.template get<T>();
-    const T *__restrict B_data = B.data_.template get<T>();
+    const T *__restrict A_data = A.data_.data_ptr<T>();
+    const T *__restrict B_data = B.data_.data_ptr<T>();
 
-    pyq_intrusive_ptr<Storage> new_data(new T[this_size * other_size], this_size * other_size);
-    const T *__restrict new_data_ = new_data.template get<T>();
+    StorageRef new_data(new T[this_size * other_size], this_size * other_size);
+    const T *__restrict new_data_ = new_data.data_ptr<T>();
 
     for (int64_t i = 0; i < this_size; ++i)
     {
@@ -500,12 +500,12 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
 
     using T = decltype(std::multiplies<>()(std::declval<U>(), std::declval<V>()));
 
-    pyq_intrusive_ptr<Storage> out(new T[size_output], size_output);
+    StorageRef out(new T[size_output], size_output);
 
     const U *__restrict a_data = tens_1.data();
 
     const V *__restrict b_data = tens_2.data();
-    T *__restrict out_data = out.template get<T>();
+    T *__restrict out_data = out.data_ptr<T>();
 
     for (size_t a_free_ind = 0; a_free_ind < a_tens_size; ++a_free_ind)
     {
@@ -553,9 +553,9 @@ auto concat(const tensor<T> &a, const tensor<U> &b, size_t axis = 0)
 
     const size_t out_size = a_size + b_size;
 
-    pyq_intrusive_ptr<Storage> out(new R[out_size], out_size);
+    StorageRef out(new R[out_size], out_size);
 
-    R *__restrict out_ptr = out.template get<R>();
+    R *__restrict out_ptr = out.data_ptr<R>();
     const T *__restrict a_ptr = a.data();
     const U *__restrict b_ptr = b.data();
 

@@ -1,9 +1,11 @@
 #include "Node.hpp"
 #include "../grad_meta.hpp"
 
-struct AccumulateGradNode: Node{
+struct AccumulateGradNode: public Node{
 
-    AccumulateGradNode(std::vector<Edge>&& func): Node(std::move(func)) {}
+    Tensor tens;
+
+    AccumulateGradNode(std::vector<Edge>&& func, std::vector<InputMetadata>&& info, const Tensor& a): Node(std::move(func), std::move(info)), tens(a) {}
 
     std::vector<Tensor> backward(std::vector<Tensor>&& args){
         auto grad_m = *grad_info;

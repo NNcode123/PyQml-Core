@@ -13,6 +13,7 @@
 #include "tensor_imp_files/tensor_metadata_util.hpp"
 #include "thread/parallel.cpp"
 #include "tensor_imp_files/cuda_alloc.cu"
+#include "Storage/intrusive_ptr.hpp"
 using namespace detail;
 using namespace parallel_sync;
 
@@ -56,7 +57,7 @@ template <typename T>
 class tensor
 {
 
-    pyq_intrusive_ptr<Storage> data_;
+    StorageRef data_;
     size_t t_size;
     std::vector<size_t> dim_;
     std::vector<int64_t> strides_;
@@ -74,15 +75,14 @@ public:
     tensor(std::vector<T> &&data, const std::vector<size_t> &dim) : t_size(data.size()), dim_(dim), offset(0)
 
     {
-        data_ = make_intrusive<Storage>(new int[data.size()], data.size());
-        // data_ = cuda_alloc<T>(data.size());
-        std::move(data.begin(), data.end(), data_. get<T>());
+        data_ = StorageRef(new T[data.size()], data.size());
+        std::move(data.begin(), data.end(), data_.template get<T>());
         fill_size_vec(dim, strides_);
     }
 
     // This constructor creates a tensor from a shared buffer and a known size, which is useful
     // for compact representations of already allocated storage and for reshape-like operations.
-    tensor(const pyq_intrusive_ptr<Storage>& data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim), offset(0)
+    tensor(const StorageRef& data_s, size_t size_val, const std::vector<size_t> &dim) : data_(data_s), t_size(size_val), dim_(dim), offset(0)
     {
 
         fill_size_vec(dim, strides_);
@@ -90,7 +90,7 @@ public:
 
     // This constructor wraps an existing shared buffer with explicit logical dimensions and
     // strides so the tensor can represent either contiguous data or a view over another buffer.
-    static tensor<T> tensor_view(const pyq_intrusive_ptr<Storage>& buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, size_t offset, size_t t_size);
+    static tensor<T> tensor_view(const StorageRef& buffer, const std::vector<size_t> &dims, const std::vector<int64_t> &strides, size_t offset, size_t t_size);
 
     [[nodiscard]] size_t size() const
     {
@@ -100,7 +100,7 @@ public:
     [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
     [[nodiscard]] size_t ndim() const { return dim_.size(); }
     [[nodiscard]] T *data() const { return data_.template get<T>() + offset; }
-    [[nodiscard]] pyq_intrusive_ptr<Storage> owner() const { return data_; }
+    [[nodiscard]] StorageRef owner() const { return data_; }
     //[[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
     [[nodiscard]] const std::vector<size_t> &shape() const { return dim_; }
     [[nodiscard]] size_t ofst() const { return offset; }

@@ -49,13 +49,16 @@ class Storage: public refcount{
         dtor = [](void * p){delete[] static_cast<U*>(p); };
     }
 
-    void* get(){return buffer;}
+    void* get() const noexcept { return buffer; }
 
-    size_t bytes(){return bytes_size;}
+    size_t bytes() const noexcept { return bytes_size; }
 
     template <typename U> 
 
-    U* get_typed(){return static_cast<U*>(buffer);}
+    U* get_typed() const noexcept { return static_cast<U*>(buffer); }
+
+    template <typename U>
+    U* data_ptr() const noexcept { return get_typed<U>(); }
 
     protected:
 
@@ -97,30 +100,31 @@ class pyq_intrusive_ptr{
             storage->incref();
         }
 
-        template <typename U> 
-        U* get() const {
-            return storage->template get_typed<U>();
+        template <typename... Args>
+
+        pyq_intrusive_ptr<T> make_intrusive(Args&&... args){
+            return pyq_intrusive_ptr(std::forward<Args>(args)...);
         }
+
+        
 
         explicit operator bool() const noexcept {
          return storage != nullptr;
         }   
 
+        T* operator->() const{
+            return storage;
+        }
 
-
-        void* get_void() const{
-            if (std::is_same_v<Storage, T>){
-                return storage->get();
-            }
-            else{
-                throw std::runtime_error("Underlying buffer is not of type Storage");
-            }
-            
+        T& operator*() const{
+            return *storage;
         }
 
         pyq_intrusive_ptr(): storage(nullptr) {}
 
         T* storage_ptr() const noexcept {return storage;}
+
+        const T* storage_ptr() const noexcept {return storage;}
 
         pyq_intrusive_ptr(const pyq_intrusive_ptr&);
 
@@ -133,6 +137,59 @@ class pyq_intrusive_ptr{
         ~pyq_intrusive_ptr(); 
         
     
+};
+
+
+class StorageRef{
+    pyq_intrusive_ptr<Storage> stg_;
+
+
+    public:
+        StorageRef() = default;
+
+        StorageRef(pyq_intrusive_ptr<Storage> ptr): stg_(std::move(ptr)) {}
+
+        void* data() const noexcept {
+            return stg_ ? stg_->get() : nullptr;
+        }
+
+        void* get_void() const noexcept {
+            return data();
+        }
+
+        template <typename T>
+        T* get() const noexcept {
+            return stg_ ? stg_->template get_typed<T>() : nullptr;
+        }
+
+        template <typename T>
+        T* data_ptr() const noexcept {
+            return get<T>();
+        }
+
+        template <typename... Args>
+        StorageRef(Args&&... args): stg_(std::forward<Args>(args)...) {}
+
+        size_t nbytes() const noexcept {
+            return stg_ ? stg_->bytes() : 0;
+        }
+
+        const pyq_intrusive_ptr<Storage>& storage_ptr() const noexcept {
+            return stg_;
+        }
+
+        pyq_intrusive_ptr<Storage> owner() const noexcept {
+            return stg_;
+        }
+
+        operator bool() const noexcept{
+            return static_cast<bool>(stg_);
+        }
+
+        Storage* operator->() const noexcept {
+            return stg_.operator->();
+        }
+
 };
 
 

@@ -3,47 +3,7 @@
 #include "dispatch.hpp"
 
 
-
-
-
 /*
-template <typename Prop>
-Tensor getTens(Prop &&prop)
-{
-    PYQ_TENSOR_BUILD((*this), dtype,
-
-                     auto tens = Tensor::getTens<type>(*this);
-                     auto res = prop(tens);
-
-                     return Tensor(
-                         res.owner(),
-                         res.dim(),
-                         res.strides(),
-                         dtype,
-                         res.ofst());)
-}
-
-template <typename T>
-static Tensor fill(const std::vector<size_t> &shape,
-                   T value,
-                   DType dtype)
-{
-    PYQ_TENSOR_BUILD(dummy, dtype,
-
-                     size_t n_size = 1;
-                     for (auto s : shape)
-                         n_size *= s;
-
-                     std::shared_ptr<type[]> data_n(new type[n_size]);
-
-                     std::fill(
-                         data_n.get(),
-                         data_n.get() + n_size,
-                         static_cast<type>(value));
-
-                     return Tensor(data_n, shape, dtype);)
-}
-
 template <typename T>
 static Tensor arange(T start, T end, T step, DType dtype)
 {
@@ -64,6 +24,7 @@ static Tensor arange(T start, T end, T step, DType dtype)
                      return Tensor(out, {size}, dtype);)
 }
  */
+ 
 
 
 template <typename Prop>
@@ -230,8 +191,8 @@ Tensor Tensor::getTens(Prop &&prop) const
                                     if ((start >= end && step > 0) || (start <= end && step < 0)) size = 0;
                                     R strt = static_cast<R>(start);
                                     R stp = static_cast<R>(step);
-                                    pyq_intrusive_ptr<Storage> out(new R[size], size);
-                                    R *raw = out.template get<R>();
+                                    StorageRef out(new R[size], size);
+                                    R *raw = out.data_ptr<R>();
                                     for (size_t j = 0; j < size; ++j)
                                     {
                                         *raw++ = strt;

@@ -1,27 +1,40 @@
 #pragma once
 #include "dtype.hpp"
-#include "Autograd/Node.hpp"
 #include <memory>
 #include "../cpp/src/tensor.hpp"
+#include "../Storage/intrusive_ptr.hpp"
 
 
 
 class Node;
-class grad_meta;
+
+struct grad_meta: public refcount{
+
+    Tensor grad;
+
+    bool requires_grad = false;
+
+    bool is_leaf = false;
+
+    bool retain_grad = false;
+
+    pyq_intrusive_ptr<Node> node;
+
+};
+
 
 
 class Tensor
 {
 
-    pyq_intrusive_ptr<Storage> data;
+    StorageRef data;
     
     std::vector<size_t> shape_;
     std::vector<int64_t> strides_;
     size_t size;
     size_t offset;
     DType dtype;
-    pyq_intrusive_ptr<Node> grad_fn;
-    std::shared_ptr<grad_meta> info;
+    pyq_intrusive_ptr<grad_meta> info;
 
 public:
     // This helper resolves a runtime DType into a concrete C++ scalar type and executes
@@ -60,14 +73,13 @@ public:
     template <typename T>
     tensor<T> get_typed_tensor() const
     {
-        //pyq_intrusive_ptr<Storage> data_n  = data;
-        tensor<T> tens = tensor<T>::tensor_view(data /*data*/, shape_, strides_, offset, size);
+        tensor<T> tens = tensor<T>::tensor_view(data, shape_, strides_, offset, size);
         return tens;
     }
 
     // This constructor wraps an existing buffer with a logical tensor shape and dtype so
     // Python-visible tensor objects can reference shared storage without copying the data.
-    Tensor(const pyq_intrusive_ptr<Storage>&   owner, const std::vector<size_t>& dim, DType type) : shape_(dim),
+    Tensor(const StorageRef&   owner, const std::vector<size_t>& dim, DType type) : shape_(dim),
                                                                                      offset(0), dtype(type), size(calc_size(dim))
     {
 
@@ -78,7 +90,7 @@ public:
 
     // This constructor creates a view over an existing buffer with explicit strides and an
     // optional offset, which lets the wrapper represent slices and broadcasted views efficiently.
-    Tensor(const pyq_intrusive_ptr<Storage>& owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type),
+    Tensor(const StorageRef& owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type),
                                                                                                                                                 size(calc_size(dim))
     {
         data = owner;
@@ -93,12 +105,58 @@ public:
     // This constructor materializes a tensor from a standard vector and shape description,
     // making it straightforward to build native tensors from Python lists or other host data.
     template <typename T>
-    Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
+    Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type, bool requires_grad = false) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
     {
-        data = make_intrusive<Storage,T>(new T[val.size()], val.size());
-        std::copy(val.begin(), val.end(), data.template get<T>());
+        data = StorageRef(new T[val.size()], val.size());
+        std::copy(val.begin(), val.end(), data.data_ptr<T>());
         fill_size_vec(dim, strides_);
+        if (requires_grad) {
+
+            pyq_intrusive_ptr<AcummulateGradNode>()
+
+            InputMetadata meta{.shape = dim, .type = type };
+            
+            grad_meta g_info = new grad_meta { .grad = nullptr, .requires_grad = true, .is_leaf = true, 
+                .retain_grad = false };
+            info = make_intrusive<grad_meta>(g_info);
+        }
     }
+
+    // Copy constructor: performs deep copy of `info` using make_unique
+    
+    /*
+    Tensor(const Tensor &other)
+        : data(other.data), shape_(other.shape_), strides_(other.strides_), 
+        size(other.size), offset(other.offset), dtype(other.dtype)
+    {
+        if (other.info)
+            info = std::make_unique<grad_meta>(*other.info);
+    }
+    
+
+    // Copy assignment: performs deep copy of `info` using make_unique
+
+    /*
+    Tensor &operator=(const Tensor &other)
+    {
+        if (this == &other)
+            return *this;
+
+        data = other.data;
+        shape_ = other.shape_;
+        strides_ = other.strides_;
+        size = other.size;
+        offset = other.offset;
+        dtype = other.dtype;
+
+        if (other.info)
+            info = std::make_unique<grad_meta>(*other.info);
+        else
+            info.reset();
+
+        return *this;
+    }
+    */
 
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
     // inputs and then delegating to the core tensor implementation with the appropriate scalar types.
@@ -180,7 +238,8 @@ public:
     template <typename R>
     Tensor operator/(R value) const;
 
-    Tensor& operator/(const Tensor& other);
+    Tensor& operator/=(const Tensor& other);
+
 
     // This method converts the tensor to a different dtype and optionally copies the memory,
     // enabling explicit type control when interacting with Python or native code.
@@ -210,17 +269,42 @@ public:
         return dtype;
     }
 
+    void backward() const;
+
     // This accessor returns the tensor shape so Python and C++ callers can inspect the
     // logical dimensions that describe the data layout.
-    std::vector<size_t> shape() const { return shape_; }
+    const std::vector<size_t>& shape() const { return shape_; }
 
-    std::vector<int64_t> strides() const {return strides_;}
+    const std::vector<int64_t>& strides() const {return strides_;}
 
     size_t get_size() const {return size;}
 
     size_t get_offset() const{return offset;}
 
-    pyq_intrusive_ptr<Storage> data_ptr() const {return data;}
+    template <typename T>
+
+    T* data_ptr() const { return data.data_ptr<T>() + offset; }
+
+    void* data() const {return static_cast<char*>(data.void_data())+offset ;}
+
+    Tensor& get_grad() {return info->grad;}
+
+    const Tensor& get_grad() const {return info->grad;}
+
+    const pyq_intrusive_ptr<Node>& grad_fn() const {return info->node;}
+
+    bool is_leaf() const {return info ? info->is_leaf: false;}
+
+    bool requires_grad() const {return info? info->requires_grad: false;}
+
+    void retain_grad() {
+       
+        info->retain_grad = true;
+        /*
+        
+        
+        */
+    }
 
 
 

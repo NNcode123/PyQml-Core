@@ -158,9 +158,9 @@ template <typename... Slices>
     std::vector<size_t> new_dim = std::move(plan.dim);
     int64_t cur_index = std::move(plan.start_index);
     size_t new_data_size = std::move(plan.size);
-    pyq_intrusive_ptr<Storage> new_data(new T[new_data_size], new_data_size);
-    T *__restrict new_data_ptr = new_data.template get<T>();
-    const T *__restrict data_ptr = data_.template get<T>();
+    StorageRef new_data(new T[new_data_size], new_data_size);
+    T *__restrict new_data_ptr = new_data.data_ptr<T>();
+    const T *__restrict data_ptr = data_.data_ptr<T>();
     for (size_t i = 0; i < new_data_size; ++i)
     {
         new_data_ptr[i] = data_ptr[cur_index];
@@ -244,9 +244,9 @@ template <typename T>
         return *this;
     }
 
-    const T *__restrict src = data_.template get<T>();
-    pyq_intrusive_ptr<Storage> new_data(new T[size()],size());
-    T *__restrict data = new_data.template get<T>();
+    const T *__restrict src = data_.data_ptr<T>();
+    StorageRef new_data(new T[size()], size());
+    T *__restrict data = new_data.data_ptr<T>();
     src += offset;
     std::vector<size_t> counts(dim_.size(), 1);
     const auto [cont_size, cont_offset] = collapse_size();

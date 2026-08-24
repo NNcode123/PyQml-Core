@@ -9,7 +9,7 @@ struct DivNode: public Node {
 
     Tensor rhs;
 
-    DivNode(std::vector<Edge>&& funcs, const Tensor & a, const Tensor & b): Node(std::move(funcs)), lhs(a), rhs(b) {}
+    DivNode(std::vector<Edge>&& funcs, std::vector<InputMetadata>&& info, const Tensor & a, const Tensor & b): Node(std::move(funcs), std::move(info)), lhs(a), rhs(b) {}
 
 
     std::vector<Tensor> backward(std::vector<Tensor>&& args){

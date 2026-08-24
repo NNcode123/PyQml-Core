@@ -62,8 +62,8 @@ tensor<T> tensor<T>::reduce_op(const std::vector<int>& axes, ElmOp &&op, bool  k
         
     }
 
-    pyq_intrusive_ptr<Storage> out(new T[size_output], size_output);
-    T *__restrict out_data = out.template get<T>();
+    StorageRef out(new T[size_output], size_output);
+    T *__restrict out_data = out.data_ptr<T>();
     const T *__restrict data__ = data();
 
     T res_val;
@@ -91,7 +91,7 @@ template <typename ElmOp>
 T tensor<T>::reduce_op(ElmOp &&op)
 {
     T res = 0;
-    const T *__restrict data = data_.template get<T>() + offset;
+    const T *__restrict data = data_.data_ptr<T>() + offset;
     if (is_contiguous())
     {
         for (size_t i = 0; i < t_size; ++i)
@@ -127,9 +127,9 @@ tensor<T> tensor<T>::apply_op(ElmOp &&op) const
     T res = 0;
     std::vector<size_t> n_shp = dim_;
     size_t size = t_size;
-    pyq_intrusive_ptr<Storage> out(new T[size], size);
-    const T *__restrict out_data = out.template get<T>() + offset;
-    const T *__restrict data = data_.template get<T>() + offset;
+    StorageRef out(new T[size], size);
+    const T *__restrict out_data = out.data_ptr<T>() + offset;
+    const T *__restrict data = data_.data_ptr<T>() + offset;
     if (is_contiguous())
     {
         for (size_t i = 0; i < t_size; ++i)
@@ -276,9 +276,9 @@ tensor<R> tensor<T>::astype(bool copy) const
         itr[j].dim = dim_[j];
     }
 
-    pyq_intrusive_ptr<Storage> new_ptr(new R[t_size], t_size);
-    R *__restrict raw_new = new_ptr.template get<R>();
-    const T *__restrict cur_ptr = data_.template get<T>() + offset;
+    StorageRef new_ptr(new R[t_size], t_size);
+    R *__restrict raw_new = new_ptr.data_ptr<R>();
+    const T *__restrict cur_ptr = data_.data_ptr<T>() + offset;
     size_t ind_dim = dim_.size() - 1;
 
     if (is_contiguous())
@@ -313,7 +313,7 @@ tensor<T> empty(const std::vector<size_t> &shape)
     {
         size *= val;
     }
-    pyq_intrusive_ptr<Storage> data(new T[size], size);
+    StorageRef data(new T[size], size);
     return tensor<T>(data, size, shape);
 }
 
@@ -322,8 +322,8 @@ template <typename T>
 tensor<T> typed_fill(const std::vector<size_t>& shape, T value){
      size_t n_size = 1;
      for (const auto& val: shape) {n_size *= val;}
-     pyq_intrusive_ptr<Storage> data_n(new R[n_size], n_size);
-     R* buf = data_n.template get<R>();
+     StorageRef data_n(new R[n_size], n_size);
+     R* buf = data_n.data_ptr<R>();
      std::fill(buf,buf+n_size,static_cast<R>(value));
     return tensor<T>(data_n, n_size, shape); 
 }
