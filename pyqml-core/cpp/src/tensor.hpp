@@ -13,7 +13,7 @@
 #include "tensor_imp_files/tensor_metadata_util.hpp"
 #include "thread/parallel.cpp"
 #include "tensor_imp_files/cuda_alloc.cu"
-#include "Storage/intrusive_ptr.hpp"
+#include "../../Storage/intrusive_ptr.hpp"
 using namespace detail;
 using namespace parallel_sync;
 
@@ -76,7 +76,7 @@ public:
 
     {
         data_ = StorageRef(new T[data.size()], data.size());
-        std::move(data.begin(), data.end(), data_.template get<T>());
+        std::move(data.begin(), data.end(), data_.data_ptr<T>());
         fill_size_vec(dim, strides_);
     }
 
@@ -99,7 +99,7 @@ public:
     [[nodiscard]] std::vector<size_t> dim() const { return dim_; }
     [[nodiscard]] std::vector<int64_t> strides() const { return strides_; }
     [[nodiscard]] size_t ndim() const { return dim_.size(); }
-    [[nodiscard]] T *data() const { return data_.template get<T>() + offset; }
+    [[nodiscard]] T *data() const { return data_.data_ptr<T>() + offset; }
     [[nodiscard]] StorageRef owner() const { return data_; }
     //[[nodiscard]] std::vector<T> data_vector() const { return std::vector<T>(data_.get(), data_.get() + t_size); }
     [[nodiscard]] const std::vector<size_t> &shape() const { return dim_; }

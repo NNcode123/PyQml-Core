@@ -322,9 +322,9 @@ template <typename T>
 tensor<T> typed_fill(const std::vector<size_t>& shape, T value){
      size_t n_size = 1;
      for (const auto& val: shape) {n_size *= val;}
-     StorageRef data_n(new R[n_size], n_size);
-     R* buf = data_n.data_ptr<R>();
-     std::fill(buf,buf+n_size,static_cast<R>(value));
+     StorageRef data_n(new T[n_size], n_size);
+     T* buf = data_n.data_ptr<T>();
+     std::fill(buf,buf+n_size,static_cast<T>(value));
     return tensor<T>(data_n, n_size, shape); 
 }
 
@@ -338,5 +338,5 @@ tensor<T> typed_zeroes(const std::vector<size_t>& shape){
 template <typename T>
 tensor<T> typed_ones(const std::vector<size_t>& shape){
     T one{1};
-    return fill(shape, ones);
+    return fill(shape, one);
 }

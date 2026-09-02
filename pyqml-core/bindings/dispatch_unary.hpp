@@ -160,7 +160,7 @@ Tensor Tensor::getTens(Prop &&prop) const
         PYQ_UNARY_DISPATCH(type, 
             auto t_value = static_cast<atype>(value);
             auto t_tensor = typed_fill(shape, t_value);
-            return Tensor(t_tensor.owner(), shape, type)
+            return Tensor(t_tensor.owner(), shape, type);
         )
     }
 

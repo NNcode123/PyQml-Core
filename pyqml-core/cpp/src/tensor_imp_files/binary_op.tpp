@@ -190,8 +190,8 @@ tensor<T> tensor<T>::binary_op(const tensor<T> &a, const tensor<T> &b, Func op) 
 
     StorageRef out(new T[size_output], size_output);
 
-    const T *__restrict b_data = b.data_.data_ptr<T>() + b.offset;
-    const T *__restrict a_data = a.data_.data_ptr<T>() + a.offset;
+    const T *__restrict b_data = b.data();
+    const T *__restrict a_data = a.data();
     size_t a_size = a.t_size;
     size_t b_size = b.t_size;
     T *__restrict out_data = out.data_ptr<T>();
@@ -369,8 +369,8 @@ template <typename T>
 
     const size_t this_size = size();
     const size_t other_size = other.size();
-    const T *__restrict A_data = A.data_.data_ptr<T>();
-    const T *__restrict B_data = B.data_.data_ptr<T>();
+    const T *__restrict A_data = A.data();
+    const T *__restrict B_data = B.data();
 
     StorageRef new_data(new T[this_size * other_size], this_size * other_size);
     const T *__restrict new_data_ = new_data.data_ptr<T>();

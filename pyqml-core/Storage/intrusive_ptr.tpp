@@ -5,9 +5,7 @@ template <typename T>
 
 pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(pyq_intrusive_ptr<T>&& other) noexcept{
     if (this != &other){
-        if (storage){
-            storage->decref();
-        }
+        reset_ref();
         storage = other.storage;
         other.storage = nullptr;
         
@@ -19,9 +17,7 @@ pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(pyq_intrusive_ptr<T>&& oth
 template <typename T>
 
 pyq_intrusive_ptr<T>::pyq_intrusive_ptr(const pyq_intrusive_ptr<T>& other): storage(other.storage){
-    if (other.storage){
-    other.storage->incref();
-    }
+    retain();
 }
 
 
@@ -30,12 +26,8 @@ template <typename T>
 pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(const pyq_intrusive_ptr<T>& other ) noexcept {
 
     if (this != &other){
-        if (storage){
-            storage->decref();
-        }
-        if (other.storage){
-            other.storage->incref();
-        }
+        other.retain();
+        reset_ref();
         storage = other.storage;
         
     }
@@ -54,16 +46,23 @@ pyq_intrusive_ptr<T>::pyq_intrusive_ptr(pyq_intrusive_ptr<T>&& other): storage(o
 }
 
 
+template <typename T>
+template <typename U>
+pyq_intrusive_ptr<T>& pyq_intrusive_ptr<T>::operator=(const pyq_intrusive_ptr<U>& other) noexcept{
+    if (&other != this){
+        other.retain();
+        reset_ref();
+    }
+    storage = other.storage;
+    return *this;
+}
+
 
 
 template <typename T>
 
 pyq_intrusive_ptr<T>::~pyq_intrusive_ptr(){
-    if (storage){
-        //std::cout << "calling destructor on underlying storage: " << storage << std::endl;
-        storage->decref();
-    }
-
+    reset_ref();
 }
 
 
@@ -78,3 +77,4 @@ template <typename T, typename buff_type>
 pyq_intrusive_ptr<T> make_intrusive(buff_type* p, size_t size){
     return pyq_intrusive_ptr<T>(new T(p, size));
 }
+

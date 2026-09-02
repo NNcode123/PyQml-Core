@@ -70,6 +70,7 @@ Tensor Tensor::operator+(const Tensor &other) const
     {
         auto Tens = bin_op(*this, other, [&](auto &t_1, auto &t_2)
                       { return binary_ops(t_1, t_2, std::plus<>()); });
+        return Tens;
     }
 
     // This overload implements elementwise subtraction between two tensors and returns the
@@ -78,9 +79,11 @@ Tensor Tensor::operator+(const Tensor &other) const
         /*return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
                           { return binary_ops(t_1, t_2, std::minus<>()); });*/
 
-        auto Tens =[this, other]()->Tensor{ BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
+        auto Tens =[this, &other]()->Tensor{ BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
                            { return binary_ops(t_1, t_2, std::minus<>()); }); } ();
-       Attach_Grad(Tens,Sub,(*this),other)
+
+            return Tens;
+       //Attach_Grad(Tens,Sub,(*this),other)
     }
 
     // This overload implements elementwise multiplication between two tensors and returns a
@@ -99,7 +102,9 @@ Tensor Tensor::operator+(const Tensor &other) const
     Tensor Tensor::operator/(const Tensor &other) const
     {
         BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                           { return binary_ops(t_1, t_2, std::divides<>()); });}
+                           { return binary_ops(t_1, t_2, std::divides<>()); });
+                        
+    }
     
     Tensor& Tensor::operator+=(const Tensor& other){
         if (!data){

@@ -42,6 +42,33 @@ struct Node: public refcount
 
     virtual std::vector<Tensor> backward(std::vector<Tensor>&& tensor_input) const = 0;
 
+    void release_node_and_neighbors(Node* func){
+
+        for (auto& edge: func->edges){
+
+            auto& ptr = edge.node_fn;
+
+            release_node_and_neighbors(ptr.storage_ptr());
+
+            ptr.reset();
+
+        }
+
+    }
+
+    ~Node() override {
+        release_node_and_neighbors(this);
+
+        release_resources();
+        
+
+    }
+
+    void release_resources(){
+        
+        info.clear();
+    }
+
     // std::vector<Hook> post_hooks;
 
 

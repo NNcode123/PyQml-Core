@@ -59,7 +59,8 @@ set(BUILD_LIB_DIR ${PROJECT_SOURCE_DIR}/../../bindings)
 pybind11_add_module(pyqmlcore
     ${BUILD_LIB_DIR}/pybind_module.cpp
     ${BUILD_LIB_DIR}/tensor_init.cpp 
-    ${BUILD_LIB_DIR}/dtype_bindings.cpp  
+    ${BUILD_LIB_DIR}/dtype_bindings.cpp
+    ${BUILD_LIB_DIR}/grad_utils.cpp
 )
 
 # only link OpenMP if available (IMPORTANT)

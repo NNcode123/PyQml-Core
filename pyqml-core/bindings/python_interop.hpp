@@ -28,7 +28,7 @@ Tensor tensor_from_python(const py::array_t<T, py::array::c_style | py::array::f
 
 
         std::vector<int64_t> numpy_strides = tens.strides();
-        void * DATA = static_cast<R*>(tens.data_ptr().get_void()) + tens.get_offset();
+        void * DATA = tens.void_data();
         std::transform(
             numpy_strides.begin(),
             numpy_strides.end(),
@@ -43,7 +43,7 @@ Tensor tensor_from_python(const py::array_t<T, py::array::c_style | py::array::f
         for (auto val: shape)
             n_shape.push_back(static_cast<py::ssize_t>(val));
 
-        auto owner = new StorageRef(tens.data_ptr());
+        auto owner = new StorageRef(data);
 
         py::capsule base(owner, [](void *p) {
     delete static_cast<StorageRef *>(p);

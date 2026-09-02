@@ -28,6 +28,12 @@ class refcount{
         }
     }
 
+    int32_t ref_count() const {
+        return ref_count.load(std::memory_order_acq_rel);
+    }
+
+    protected:
+
     virtual ~refcount() = default;
 
 };
@@ -49,16 +55,13 @@ class Storage: public refcount{
         dtor = [](void * p){delete[] static_cast<U*>(p); };
     }
 
-    void* get() const noexcept { return buffer; }
+    void* get(){return buffer;}
 
-    size_t bytes() const noexcept { return bytes_size; }
+    size_t bytes(){return bytes_size;}
 
     template <typename U> 
 
-    U* get_typed() const noexcept { return static_cast<U*>(buffer); }
-
-    template <typename U>
-    U* data_ptr() const noexcept { return get_typed<U>(); }
+    U* get_typed(){return static_cast<U*>(buffer);}
 
     protected:
 
@@ -83,21 +86,31 @@ class pyq_intrusive_ptr{
 
     T* storage;
 
+    template <typename U>
+    friend class pyq_intrusive_ptr;
+
     public:
 
         pyq_intrusive_ptr(T* stg)  {
             storage = stg;
-            storage->incref();
+            retain();
         }
 
         pyq_intrusive_ptr(decltype(nullptr)): storage(nullptr) {}
+
+        template <typename U>
+        pyq_intrusive_ptr(const pyq_intrusive_ptr<U>& ptr) {
+            storage = ptr.storage;
+            retain();
+        }
+
 
         template<typename... Args>
         requires (!std::same_as<std::remove_cvref_t<Args>, pyq_intrusive_ptr> && ...) /*&& std::constructible_from<T, Args...>*/
         
         explicit pyq_intrusive_ptr(Args&& ... args){
             storage = new T(std::forward<Args>(args) ...);
-            storage->incref();
+            retain();
         }
 
         template <typename... Args>
@@ -124,7 +137,20 @@ class pyq_intrusive_ptr{
 
         T* storage_ptr() const noexcept {return storage;}
 
-        const T* storage_ptr() const noexcept {return storage;}
+        const T* const_storage_ptr() const noexcept {return storage;}
+
+        void retain() noexcept {
+            if (storage) storage->incref();
+        }
+
+        void reset_ref() noexcept {
+            if (storage) storage->decref();
+        }
+
+        void reset() noexcept {
+            reset_ref();
+            storage = nullptr;
+        }
 
         pyq_intrusive_ptr(const pyq_intrusive_ptr&);
 
@@ -134,6 +160,11 @@ class pyq_intrusive_ptr{
 
         pyq_intrusive_ptr& operator=(const pyq_intrusive_ptr& ) noexcept;
 
+        template <typename U>
+        pyq_intrusive_ptr& operator=(const pyq_intrusive_ptr<U>&) noexcept;
+
+        
+
         ~pyq_intrusive_ptr(); 
         
     
@@ -141,6 +172,8 @@ class pyq_intrusive_ptr{
 
 
 class StorageRef{
+    
+    
     pyq_intrusive_ptr<Storage> stg_;
 
 
@@ -149,22 +182,14 @@ class StorageRef{
 
         StorageRef(pyq_intrusive_ptr<Storage> ptr): stg_(std::move(ptr)) {}
 
-        void* data() const noexcept {
+        void* void_data() const noexcept {
             return stg_ ? stg_->get() : nullptr;
         }
 
-        void* get_void() const noexcept {
-            return data();
-        }
-
-        template <typename T>
-        T* get() const noexcept {
-            return stg_ ? stg_->template get_typed<T>() : nullptr;
-        }
 
         template <typename T>
         T* data_ptr() const noexcept {
-            return get<T>();
+             return stg_ ? stg_->template get_typed<T>() : nullptr;
         }
 
         template <typename... Args>
@@ -174,21 +199,11 @@ class StorageRef{
             return stg_ ? stg_->bytes() : 0;
         }
 
-        const pyq_intrusive_ptr<Storage>& storage_ptr() const noexcept {
-            return stg_;
-        }
-
-        pyq_intrusive_ptr<Storage> owner() const noexcept {
-            return stg_;
-        }
-
         operator bool() const noexcept{
             return static_cast<bool>(stg_);
         }
 
-        Storage* operator->() const noexcept {
-            return stg_.operator->();
-        }
+    
 
 };
 

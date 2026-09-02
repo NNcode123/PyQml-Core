@@ -9,6 +9,7 @@ struct FunctionPreHooks{
     virtual void operator()(std::vector<Tensor>& grad, size_t output_nr = 0)  = 0;
 
 
+
 };
 
 
@@ -20,12 +21,23 @@ struct FunctionPostHooks{
 
 };
 
+
+/*
 struct CppFunctionPreHook: FunctionPreHooks {
 
-    using hook = std::function<Tensor(std::vector<Tensor>&)>;
+    using hook = std::vector<std::function<Tensor(std::vector<Tensor>&)>>;
 
-    hooks = std::unqiue_
+    std::unique_ptr<hook> hooks;
+
+    public: 
+
+    CppFunctionPreHook(hook&&) const;
+
+    void operator()(std::vector<Tensor>& grad, size_t output_nr = 0) = 0;
+
 
 
 
 }
+    */
+    

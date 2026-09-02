@@ -7,22 +7,7 @@
 
 
 class Node;
-
-struct grad_meta: public refcount{
-
-    Tensor grad;
-
-    bool requires_grad = false;
-
-    bool is_leaf = false;
-
-    bool retain_grad = false;
-
-    pyq_intrusive_ptr<Node> node;
-
-};
-
-
+class grad_meta;
 
 class Tensor
 {
@@ -30,10 +15,15 @@ class Tensor
     StorageRef data;
     
     std::vector<size_t> shape_;
+
     std::vector<int64_t> strides_;
+
     size_t size;
+
     size_t offset;
+
     DType dtype;
+
     pyq_intrusive_ptr<grad_meta> info;
 
 public:
@@ -110,6 +100,8 @@ public:
         data = StorageRef(new T[val.size()], val.size());
         std::copy(val.begin(), val.end(), data.data_ptr<T>());
         fill_size_vec(dim, strides_);
+
+        /*
         if (requires_grad) {
 
             pyq_intrusive_ptr<AcummulateGradNode>()
@@ -120,6 +112,7 @@ public:
                 .retain_grad = false };
             info = make_intrusive<grad_meta>(g_info);
         }
+            */
     }
 
     // Copy constructor: performs deep copy of `info` using make_unique
@@ -285,26 +278,19 @@ public:
 
     T* data_ptr() const { return data.data_ptr<T>() + offset; }
 
-    void* data() const {return static_cast<char*>(data.void_data())+offset ;}
+    void* void_data() const {return static_cast<char*>(data.void_data())+offset ;}
 
-    Tensor& get_grad() {return info->grad;}
+    Tensor& get_grad();
 
-    const Tensor& get_grad() const {return info->grad;}
+    const Tensor& const_get_grad() const;
 
-    const pyq_intrusive_ptr<Node>& grad_fn() const {return info->node;}
+    const pyq_intrusive_ptr<Node>& grad_fn() const;
 
-    bool is_leaf() const {return info ? info->is_leaf: false;}
+    bool is_leaf() const;
 
-    bool requires_grad() const {return info? info->requires_grad: false;}
+    bool requires_grad() const;
 
-    void retain_grad() {
-       
-        info->retain_grad = true;
-        /*
-        
-        
-        */
-    }
+    void retain_grad();
 
 
 
@@ -312,6 +298,26 @@ public:
 
 
     
+};
+
+struct grad_meta: public refcount{
+
+    Tensor grad;
+
+    bool requires_grad = false;
+
+    bool is_leaf = false;
+
+    bool retain_grad = false;
+
+    pyq_intrusive_ptr<Node> node;
+
+    protected:
+    
+    ~grad_meta() override{
+        
+    }
+
 };
 
 
