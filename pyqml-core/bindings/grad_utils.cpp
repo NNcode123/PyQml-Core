@@ -1,4 +1,5 @@
 #include "Tensor.hpp"
+#include "Autograd/Engine.hpp"
 
 Tensor& Tensor::get_grad() {
     return info->grad;
@@ -25,3 +26,18 @@ void Tensor::retain_grad() {
         info->retain_grad = true;
     }
 }
+
+
+void Tensor::backward(){
+    if (!requires_grad()){return;}
+
+    Engine eng{};
+
+    Node* start_fn = grad_fn().storage_ptr();
+
+    eng.backward(start_fn);
+
+}
+
+
+

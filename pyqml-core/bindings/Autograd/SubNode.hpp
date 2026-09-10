@@ -1,5 +1,5 @@
 #include "Node.hpp"
-#include "Tensor.hpp"
+#include "../Tensor.hpp"
 
 struct SubNode: Node {
    

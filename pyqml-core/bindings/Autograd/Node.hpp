@@ -1,5 +1,6 @@
 // This header defines the base autograd node abstraction that higher-level gradient
 // graph classes can build on when representing tensor operations.
+#pragma once
 #include <vector>
 
 #include <unordered_map>
@@ -29,20 +30,17 @@ struct InputMetadata{
 struct Node: public refcount
 {
 
-    // std::vector<Hook> pre_hooks;
+    
 
     // edges represents the Nodes of the parent Tensors that produced this child Tensor's Nodes 
-    std::vector<Edge> edges;
-
-    std::vector<InputMetadata> info;
-
-    grad_meta* grad_info = nullptr;
-
+    
     Node(std::vector<Edge>&& edge_val, std::vector<InputMetadata>&& info): edges(std::move(edge_val)), info(std::move(info)) {}
 
     virtual std::vector<Tensor> backward(std::vector<Tensor>&& tensor_input) const = 0;
 
     void release_node_and_neighbors(Node* func){
+
+        if (!func) {return;}
 
         for (auto& edge: func->edges){
 
@@ -50,14 +48,28 @@ struct Node: public refcount
 
             release_node_and_neighbors(ptr.storage_ptr());
 
-            ptr.reset();
+            ptr.reset();    
+
+
+
 
         }
 
     }
 
+    /*
+    const std::vector<Edge>& const_next_edge() const;
+    std::vector<Edge>& next_edge() const;
+    const std::vector<InputMetadata>& input_metadata_() const;
+    std::vector<InputMetadata>& input_metadata_() const;
+    */
+
     ~Node() override {
+
+
+        
         release_node_and_neighbors(this);
+        
 
         release_resources();
         
@@ -69,7 +81,21 @@ struct Node: public refcount
         info.clear();
     }
 
+    
+
+
+    //protected: 
+
+    std::vector<Edge> edges;
+
+    std::vector<InputMetadata> info;
+
+    // std::vector<Hook> pre_hooks;
+
     // std::vector<Hook> post_hooks;
+
+    
+
 
 
 

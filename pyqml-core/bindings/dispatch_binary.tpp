@@ -1,4 +1,3 @@
-
 #include "Tensor.hpp"
 #include "dispatch.hpp"
 #include "Autograd/attach_grad_binary.hpp"
@@ -79,11 +78,15 @@ Tensor Tensor::operator+(const Tensor &other) const
         /*return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
                           { return binary_ops(t_1, t_2, std::minus<>()); });*/
 
-        auto Tens =[this, &other]()->Tensor{ BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
+        auto Tens =[&]()->Tensor{ BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
                            { return binary_ops(t_1, t_2, std::minus<>()); }); } ();
 
-            return Tens;
-       //Attach_Grad(Tens,Sub,(*this),other)
+                        
+        if (requires_grad() || other.requires_grad())
+            Attach_Grad(Tens,Sub,(*this),other)
+
+
+        return Tens;
     }
 
     // This overload implements elementwise multiplication between two tensors and returns a
@@ -116,3 +119,10 @@ Tensor Tensor::operator+(const Tensor &other) const
     }
 
 
+
+
+    Tensor einsum_(const Tensor &a, const Tensor &b, const std::vector<int> &axes_a, const std::vector<int> &axes_b)
+    {
+    return bin_op(a, b, [&](auto &t_1, auto &t_2)
+                              { return einsum(t_1, t_2, axes_a, axes_b); });
+    }

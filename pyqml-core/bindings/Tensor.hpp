@@ -1,8 +1,7 @@
 #pragma once
 #include "dtype.hpp"
 #include <memory>
-#include "../cpp/src/tensor.hpp"
-#include "../Storage/intrusive_ptr.hpp"
+#include "../cpp/include/tensor.hpp"
 
 
 
@@ -231,6 +230,18 @@ public:
     template <typename R>
     Tensor operator/(R value) const;
 
+    template <typename R>
+    friend Tensor operator+(R value, const Tensor &tensor);
+
+    template <typename R>
+    friend Tensor operator-(R value, const Tensor &tensor);
+
+    template <typename R>
+    friend Tensor operator*(R value, const Tensor &tensor);
+
+    template <typename R>
+    friend Tensor operator/(R value, const Tensor &tensor);
+
     Tensor& operator/=(const Tensor& other);
 
 
@@ -281,6 +292,8 @@ public:
     void* void_data() const {return static_cast<char*>(data.void_data())+offset ;}
 
     Tensor& get_grad();
+    
+    void backward();
 
     const Tensor& const_get_grad() const;
 
@@ -314,12 +327,10 @@ struct grad_meta: public refcount{
 
     protected:
     
-    ~grad_meta() override{
-        
-    }
+    ~grad_meta() = default;
 
 };
 
 
-#include "dispatch_binary.hpp"
-#include "dispatch_unary.hpp"
+#include "dispatch_binary.tpp"
+#include "dispatch_unary.tpp"

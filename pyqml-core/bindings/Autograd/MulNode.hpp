@@ -1,4 +1,4 @@
-#include "Tensor.hpp"
+#include "../Tensor.hpp"
 #include "Node.hpp"
 
 struct MulNode: public Node {

@@ -1,4 +1,3 @@
-
 #include "Tensor.hpp"
 #include "dispatch.hpp"
 
@@ -114,31 +113,31 @@ Tensor Tensor::getTens(Prop &&prop) const
     }
 
     template <typename R>
-    Tensor operator+(R value, const Tensor &t)
+    Tensor Tensor::operator+(R value, const Tensor &t)
     {
         return t.getTens([&](auto &inner)
-                         { return inner.operator+(value); });
+                         { return value + inner; });
     }
 
     template <typename R>
-    Tensor operator-(R value, const Tensor &t)
+    Tensor Tensor::operator-(R value, const Tensor &t)
     {
         return t.getTens([&](auto &inner)
-                         { return inner.operator-(value); });
+                         { return value - inner; });
     }
 
     template <typename R>
-    Tensor operator*(R value, const Tensor &t)
+    Tensor Tensor::operator*(R value, const Tensor &t)
     {
         return t.getTens([&](auto &inner)
-                         { return inner.operator*(value); });
+                         { return value * inner; });
     }
 
     template <typename R>
-    Tensor operator/(R value, const Tensor &t)
+    Tensor Tensor::operator/(R value, const Tensor &t)
     {
         return t.getTens([&](auto &inner)
-                         { return inner.operator/(value); });
+                         { return value / inner; });
     }
 
     /*
@@ -234,7 +233,7 @@ Tensor Tensor::getTens(Prop &&prop) const
     // can inspect or further process the native data without extra conversion helpers.
 
     Tensor Tensor::unbroadcast(const Tensor& in, const std::vector<size_t>& shape){
-        std::vector<size_t> orig_shape = in.shape_;
+        auto& orig_shape = in.shape_;
         std::vector<int> bdims;
 
         for (size_t i = 0; i < orig_shape.size(); ++i){
