@@ -9,11 +9,9 @@
 #include <variant>
 #include <cstring>
 #include <memory>
-#include "tensor_imp_files/itr.hpp"
-#include "tensor_imp_files/tensor_metadata_util.hpp"
-#include "thread/parallel.cpp"
-#include "tensor_imp_files/cuda_alloc.cu"
-#include "../../Storage/intrusive_ptr.hpp"
+#include "thread/parallel.hpp"
+#include "Storage/intrusive_ptr.hpp"
+#include "tensor_metadata_util.hpp"
 using namespace detail;
 using namespace parallel_sync;
 
@@ -113,6 +111,8 @@ public:
         tensor<T> cop_tens = copy();
         return tensor<T>(cop_tens.data_, cop_tens.t_size, newshape);
     }
+
+    std::string get_str() const;
 
 
     [[nodiscard]] T &at(const std::vector<int> &pos)
@@ -215,8 +215,8 @@ public:
     }
 };
 
-#include "tensor_imp_files/slice.tpp"
-#include "tensor_imp_files/binary_op.tpp"
-#include "tensor_imp_files/unary_op.tpp"
-#include "tensor_imp_files/getter.tpp"
+#include "../src/tensor_imp_files/slice.tpp"
+#include "../src/tensor_imp_files/binary_op.tpp"
+#include "../src/tensor_imp_files/unary_op.tpp"
+#include "../src/tensor_imp_files/getter.tpp"
 #pragma message("getter.tpp included successfully")

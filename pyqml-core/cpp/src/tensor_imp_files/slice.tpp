@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdint>
-#include "../tensor.hpp"
+#include <numeric>
+#include "../../include/tensor.hpp"
 #include <type_traits>
 
 // This method turns a set of indexing descriptors into an internal slice plan and iterator
@@ -86,7 +87,7 @@ std::pair<SlicePlan, std::vector<AxisIter>> tensor<T>::analyze_slices(const Axis
         }
     }
 
-    return {SlicePlan{.dim = std::move(new_dim),  .start_index = cur_index, .size = new_data_size,}, axis_iter};
+    return {SlicePlan{.dim = std::move(new_dim), .strides = {}, .start_index = cur_index, .size = new_data_size}, axis_iter};
 }
 
 // This overload builds a lightweight slice plan for view-style indexing by computing the
@@ -144,7 +145,10 @@ SlicePlan tensor<T>::analyze_slices(const AxisView *inds, size_t inds_size)
         }
     }
 
-    return SlicePlan{.dim = std::move(new_dim), .strides = std::move(new_strides), .start_index = cur_index};
+    const size_t plan_size = std::accumulate(new_dim.begin(), new_dim.end(), size_t{1}, [](size_t acc, size_t val) {
+        return acc * val;
+    });
+    return SlicePlan{.dim = std::move(new_dim), .strides = std::move(new_strides), .start_index = cur_index, .size = plan_size};
 }
 
 // This method materializes a new tensor from a set of slice expressions and copies the
@@ -205,9 +209,9 @@ std::pair<size_t, size_t> tensor<T>::collapse_size() const
     }
     size_t cur_size = dim_.back();
     size_t offset = dim_.size() - 2;
-    for (int i = dim_.size() - 1; i > 0; --i)
+    for (size_t i = dim_.size() - 1; i > 0; --i)
     {
-        if (strides_[i - 1] == dim_[i] * strides_[i])
+        if (strides_[i - 1] == (int64_t)dim_[i] * strides_[i])
         {
             cur_size *= dim_[i - 1];
             offset = i - 1;
@@ -224,8 +228,8 @@ std::pair<size_t, size_t> tensor<T>::collapse_size() const
 template <typename T>
 bool tensor<T>::is_contiguous() const
 {
-    size_t expect = 1;
-    for (int i = dim_.size() - 1; i >= 0; --i)
+    int64_t expect = 1;
+    for (size_t i = dim_.size(); i-- > 0; )
     {
         if (strides_[i] != expect)
             return false;
@@ -252,10 +256,10 @@ template <typename T>
     const auto [cont_size, cont_offset] = collapse_size();
     size_t radix_size = size() / cont_size;
     int64_t radix_dim_pos = cont_offset;
-    int64_t cur_pos = 0;
-    int64_t dest_pos = 0;
+   // int64_t cur_pos = 0;
+    //int64_t dest_pos = 0;
     AxisIter iter[NDIM];
-    for (int i = 0; i < dim_.size(); ++i)
+    for (size_t i = 0; i < dim_.size(); ++i)
     {
         iter[i].advance = strides_[i];
         iter[i].count = 1;

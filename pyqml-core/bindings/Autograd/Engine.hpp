@@ -1,6 +1,5 @@
-#include "Tensor.hpp"
+#include "../Tensor.hpp"
 #include "Node.hpp"
-#include "../grad_meta.hpp"
 
 struct Engine {
 
@@ -79,6 +78,7 @@ struct Engine {
 
             
             
+            /*
             if (cur->grad_info->retain_grad){
                 Tensor& grad = cur->grad_info->grad;
                 auto& gradients = buffer[cur];
@@ -86,6 +86,7 @@ struct Engine {
                     grad += tens;
                 }
             }
+            */
             
 
             auto grads = cur->backward(std::move(buffer[cur]));

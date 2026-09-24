@@ -7,7 +7,7 @@ struct SubNode: Node {
     SubNode(std::vector<Edge>&& func, std::vector<InputMetadata>&& info): Node(std::move(func), std::move(info)) {}
 
 
-    std::vector<Tensor> backward(std::vector<Tensor> && grads) const noexcept override{
+    std::vector<Tensor> backward(std::vector<Tensor> && grads) override{
 
         
         /*

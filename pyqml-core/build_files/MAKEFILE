@@ -1,0 +1,35 @@
+COMPILER = g++
+
+CFLAGS = -std=c++20 -Wall -Wextra -Werror -I../bindings -I../cpp/include
+
+OPTIMMODE ?= O0
+
+ifeq ($(OPTIMMODE),O0)
+OPTFLAG = -O0
+
+else ifeq ($(OPTIMMODE),O1)
+OPTFLAG = -O1
+
+else ifeq ($(OPTIMMODE),O2)
+OPTFLAG = -O2
+
+else
+$(error "Invalid Optimization Flag. Please use O0, O1, or O2")
+
+endif
+
+TARGET = ../bindings/tens_test.cpp ../bindings/grad_utils.cpp ../bindings/binary_ops.cpp ../bindings/unary_ops.cpp
+
+SOURCES = ../bindings/Tensor.hpp
+
+.PHONY: clean run
+
+test_exec: $(SOURCES)
+
+	@$(COMPILER) $(CFLAGS) $(OPTFLAG) $(TARGET) -o test_exec 2>&1 | tee errors.txt
+
+run:
+	./test_exec
+
+clean:
+	@(rm -rf test_exec)

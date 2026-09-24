@@ -1,0 +1,20 @@
+In file included from ../bindings/Tensor.hpp:4,
+                 from ../bindings/tens_test.cpp:1:
+../bindings/../cpp/include/tensor.hpp:222:51: note: ‘#pragma message: getter.tpp included successfully’
+  222 | #pragma message("getter.tpp included successfully")
+      |                                                   ^
+In file included from ../bindings/Tensor.hpp:4,
+                 from ../bindings/grad_utils.cpp:1:
+../bindings/../cpp/include/tensor.hpp:222:51: note: ‘#pragma message: getter.tpp included successfully’
+  222 | #pragma message("getter.tpp included successfully")
+      |                                                   ^
+In file included from ../bindings/Tensor.hpp:4,
+                 from ../bindings/binary_ops.cpp:1:
+../bindings/../cpp/include/tensor.hpp:222:51: note: ‘#pragma message: getter.tpp included successfully’
+  222 | #pragma message("getter.tpp included successfully")
+      |                                                   ^
+In file included from ../bindings/Tensor.hpp:4,
+                 from ../bindings/unary_ops.cpp:1:
+../bindings/../cpp/include/tensor.hpp:222:51: note: ‘#pragma message: getter.tpp included successfully’
+  222 | #pragma message("getter.tpp included successfully")
+      |                                                   ^

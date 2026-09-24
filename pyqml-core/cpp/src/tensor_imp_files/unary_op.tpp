@@ -1,4 +1,4 @@
-#include "../tensor.hpp"
+#include "../../include/tensor.hpp"
 #include <type_traits>
 #include <cmath>
 
@@ -23,11 +23,11 @@ tensor<T> tensor<T>::reduce_op(const std::vector<int>& axes, ElmOp &&op, bool  k
     size_t free_i = 0, cont_i = 0, inner_size = 1;
 
 
-    for (int u = 0; u < ndims; ++u){
+    for (size_t u = 0; u < ndims; ++u){
         is_free[u] = true;
     }
 
-    for (int i  = 0; i < axes.size(); ++i ){
+    for (size_t i  = 0; i < axes.size(); ++i ){
         is_free[axes[i]] = false;
     }
 
@@ -124,11 +124,10 @@ template <typename T>
 template <typename ElmOp>
 tensor<T> tensor<T>::apply_op(ElmOp &&op) const
 {
-    T res = 0;
     std::vector<size_t> n_shp = dim_;
     size_t size = t_size;
     StorageRef out(new T[size], size);
-    const T *__restrict out_data = out.data_ptr<T>() + offset;
+    T *__restrict out_data = out.data_ptr<T>();
     const T *__restrict data = data_.data_ptr<T>() + offset;
     if (is_contiguous())
     {
@@ -260,7 +259,7 @@ template <typename T>
 
 template <typename R>
 
-tensor<R> tensor<T>::astype(bool copy) const
+tensor<R> tensor<T>::astype([[maybe_unused]] bool copy) const
 {
     /*
     if (std::is_same_v<std::decay_t<T>, std::decay_t<R>> && !copy)

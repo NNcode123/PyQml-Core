@@ -2,7 +2,6 @@
 // graph classes can build on when representing tensor operations.
 #pragma once
 #include <vector>
-
 #include <unordered_map>
 #include "Edge.hpp"
 #include "../dtype.hpp"
@@ -33,10 +32,19 @@ struct Node: public refcount
     
 
     // edges represents the Nodes of the parent Tensors that produced this child Tensor's Nodes 
+   
+
+    Node(const Node&) = delete;
+
+    Node& operator=(const Node&) = delete;
+
+    Node(Node&&) = delete;
+
+    Node& operator=(Node&&) = delete;
     
     Node(std::vector<Edge>&& edge_val, std::vector<InputMetadata>&& info): edges(std::move(edge_val)), info(std::move(info)) {}
 
-    virtual std::vector<Tensor> backward(std::vector<Tensor>&& tensor_input) const = 0;
+    virtual std::vector<Tensor> backward(std::vector<Tensor>&& tensor_input) = 0;
 
     void release_node_and_neighbors(Node* func){
 
@@ -93,6 +101,10 @@ struct Node: public refcount
     // std::vector<Hook> pre_hooks;
 
     // std::vector<Hook> post_hooks;
+
+    //std::vector<std::unique_ptr<FunctionPostHooks>> post_hooks;
+
+    //std::vector<std::unique_ptr<FunctionPreHooks>> pre_hooks; 
 
     
 

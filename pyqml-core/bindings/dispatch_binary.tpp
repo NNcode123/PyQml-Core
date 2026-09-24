@@ -1,9 +1,5 @@
 #include "Tensor.hpp"
 #include "dispatch.hpp"
-#include "Autograd/attach_grad_binary.hpp"
-
-
-
 
 
 template <typename U, typename V, typename FUNC>
@@ -21,9 +17,9 @@ template <typename Op>
 struct Binary_Dispatch_Table
 {
     using Binary_Dispatch_Func = Tensor (*)(const Tensor &, const Tensor &, Op &&);
-
     using arr = std::array<std::array<Binary_Dispatch_Func, 6>, 6>;
     arr binary_table;
+
     Binary_Dispatch_Table()
     {
         REGISTER_DTYPE_ROW(binary_table, DType::Int8, int8_t, Op, op_Binary);
@@ -36,93 +32,9 @@ struct Binary_Dispatch_Table
 };
 
 
-
 template <typename Func>
 Tensor bin_op(const Tensor &a, const Tensor &b, Func &&op)
 {
     Binary_Dispatch_Table<Func> table;
     return table.binary_table[(int)a.type()][(int)b.type()](a, b, std::forward<Func>(op));
 }
-
-
-
-
-   
-
-    // This method converts the tensor to a different dtype and optionally copies the memory,
-    // enabling explicit type control when interacting with Python or native code.
-    Tensor Tensor::astype(DType new_type, [[maybe_unused]] bool h) const
-    {
-
-       if (dtype == new_type){
-        return *this;
-       }
-    
-       TYPE_CAST_DISPATCH((*this), new_type)
-    }
-
- 
-
-
-
-Tensor Tensor::operator+(const Tensor &other) const
-    {
-        auto Tens = bin_op(*this, other, [&](auto &t_1, auto &t_2)
-                      { return binary_ops(t_1, t_2, std::plus<>()); });
-        return Tens;
-    }
-
-    // This overload implements elementwise subtraction between two tensors and returns the
-    // result as a new tensor with the broadcasted shape of the inputs.
-    Tensor Tensor::operator-(const Tensor &other) const {
-        /*return dispatchOp(*this, other, [&](auto &t_1, auto &t_2)
-                          { return binary_ops(t_1, t_2, std::minus<>()); });*/
-
-        auto Tens =[&]()->Tensor{ BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                           { return binary_ops(t_1, t_2, std::minus<>()); }); } ();
-
-                        
-        if (requires_grad() || other.requires_grad())
-            Attach_Grad(Tens,Sub,(*this),other)
-
-
-        return Tens;
-    }
-
-    // This overload implements elementwise multiplication between two tensors and returns a
-    // new tensor that reflects the broadcasted shape of the operands.
-    Tensor Tensor::operator*(const Tensor &other) const
-    {
-        
-        BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                           { return binary_ops(t_1, t_2, std::multiplies<>()); });
-                        }
-
-    
-
-    // This overload implements elementwise division between two tensors and returns the
-    // quotient as a new tensor while preserving the broadcasted shape semantics.
-    Tensor Tensor::operator/(const Tensor &other) const
-    {
-        BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                           { return binary_ops(t_1, t_2, std::divides<>()); });
-                        
-    }
-    
-    Tensor& Tensor::operator+=(const Tensor& other){
-        if (!data){
-            *this = other;
-            return *this;
-        }
-        *this = *this + other;
-        return *this;
-    }
-
-
-
-
-    Tensor einsum_(const Tensor &a, const Tensor &b, const std::vector<int> &axes_a, const std::vector<int> &axes_b)
-    {
-    return bin_op(a, b, [&](auto &t_1, auto &t_2)
-                              { return einsum(t_1, t_2, axes_a, axes_b); });
-    }

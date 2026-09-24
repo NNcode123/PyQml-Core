@@ -1,7 +1,9 @@
 #include "Tensor.hpp"
 #include "Autograd/Engine.hpp"
 
+
 Tensor& Tensor::get_grad() {
+    
     return info->grad;
 }
 
@@ -28,7 +30,7 @@ void Tensor::retain_grad() {
 }
 
 
-void Tensor::backward(){
+void Tensor::backward() const {
     if (!requires_grad()){return;}
 
     Engine eng{};

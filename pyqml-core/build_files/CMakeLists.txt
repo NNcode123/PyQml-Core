@@ -1,4 +1,3 @@
-
 cmake_minimum_required(VERSION 3.16)
 
 project(PyQmlCore LANGUAGES CXX CUDA)
@@ -8,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_RELEASE "/O2 /GL /LTCG /arch:AVX2 /fp:fast /openmp /DNDEBUG /MP")
 
-# 🔥 make OpenMP optional (fixes your error)
 find_package(OpenMP)
 
 # ---------------- PYTHON ----------------
@@ -29,46 +27,34 @@ set(CMAKE_PREFIX_PATH
 )
 find_package(pybind11 REQUIRED)
 
-#find_package(OpenBLAS REQUIRED)
+set(PYQML_CORE_DIR ${PROJECT_SOURCE_DIR}/..)
+set(BINDINGS_DIR ${PYQML_CORE_DIR}/bindings)
+set(CPP_DIR ${PYQML_CORE_DIR}/cpp)
 
-
-
-# Allow Easy Includes for Files
-include_directories(${PROJECT_SOURCE_DIR}/cpp)
-
-message(STATUS "Project source dir is:  ${PROJECT_SOURCE_DIR}")
-
-
-
-
+include_directories(${CPP_DIR})
 
 # ---------------- TEST ----------------
-add_executable(test test.cpp)
-add_executable(test_2 ${PROJECT_SOURCE_DIR}/../../bindings/tens_test.cpp)
+add_executable(test ${CPP_DIR}/src/test.cpp)
+add_executable(test_2 ${BINDINGS_DIR}/tens_test.cpp)
 target_link_libraries(test_2 PRIVATE pybind11::module)
 
-
-# only link OpenMP if it exists
 if(OpenMP_CXX_FOUND)
     target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-set(BUILD_LIB_DIR ${PROJECT_SOURCE_DIR}/../../bindings)
-
 # ---------------- PYTHON MODULE ----------------
 pybind11_add_module(pyqmlcore
-    ${BUILD_LIB_DIR}/pybind_module.cpp
-    ${BUILD_LIB_DIR}/tensor_init.cpp 
-    ${BUILD_LIB_DIR}/dtype_bindings.cpp
-    ${BUILD_LIB_DIR}/grad_utils.cpp
+    ${BINDINGS_DIR}/pybind_module.cpp
+    ${BINDINGS_DIR}/tensor_init.cpp
+    ${BINDINGS_DIR}/binary_ops.cpp
+    ${BINDINGS_DIR}/unary_ops.cpp
+    ${BINDINGS_DIR}/dtype_bindings.cpp
+    ${BINDINGS_DIR}/grad_utils.cpp
 )
 
-# only link OpenMP if available (IMPORTANT)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(pyqmlcore PRIVATE OpenMP::OpenMP_CXX)
 endif()
-
-
 
 # ---------------- CLEAN OLD FILES ----------------
 add_custom_command(TARGET pyqmlcore PRE_BUILD
@@ -89,10 +75,4 @@ add_custom_command(TARGET pyqmlcore POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_PDB_FILE:pyqmlcore>
         "${PYTHON_SITE}"
-    
-    
 )
-
-
-
-

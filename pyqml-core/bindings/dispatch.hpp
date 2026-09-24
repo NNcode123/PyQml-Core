@@ -1,11 +1,13 @@
 #pragma once
 #include <array>
+#include <stdexcept>
 
 #define PYQ_CASE(DTYPE, CTYPE, ...)\
     case DTYPE:\
     {\
         using atype = CTYPE;        \
         __VA_ARGS__                 \
+        break;                      \
     }
     
 
@@ -13,6 +15,8 @@
     switch (Type)\
     {\
         __VA_ARGS__                \
+        default:\
+            throw std::runtime_error("Unsupported DType");\
     }
 
 #define PYQ_UNARY_DISPATCH(TYPE, BODY)\

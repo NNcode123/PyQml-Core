@@ -1,4 +1,4 @@
-#include "../tensor.hpp"
+#include "../../include/tensor.hpp"
 
 // This helper renders a tensor recursively to an output stream so the contents can be
 // inspected in a readable nested form that mirrors the tensor's logical shape.
@@ -27,9 +27,8 @@ void printTens(std::ostream &out, const tensor<T> &tensor, int64_t start, size_t
 
     if (depth == dim.size())
     {
-        int dir = 1;
         int64_t cur_stride = stride[depth - 1];
-        int64_t last_dim = dim[depth - 1];
+        size_t last_dim = dim[depth - 1];
         out << "[";
         for (size_t times = 0; times < last_dim; times++)
         {
@@ -44,7 +43,7 @@ void printTens(std::ostream &out, const tensor<T> &tensor, int64_t start, size_t
     int64_t cur_stride = stride[depth - 1];
     size_t num_sub_tensors = dim[depth - 1];
     out << "[";
-    for (int64_t i = 0; i < num_sub_tensors; i++)
+    for (size_t i = 0; i < num_sub_tensors; i++)
     {
         if (i > 0)
         {
@@ -64,10 +63,10 @@ void printTens(std::ostream &out, const tensor<T> &tensor, int64_t start, size_t
 // This helper builds a string representation of a tensor by reusing the recursive printer
 // and returning the resulting text in a form that is easy to display or debug.
 template <typename T>
-std::string get_str(const tensor<T> &tensor)
+std::string tensor<T>::get_str() const
 {
     std::stringstream out;
-    printTens(out, tensor, 0);
+    printTens(out, *this, 0);
     return out.str();
 }
 

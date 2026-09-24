@@ -22,7 +22,7 @@ class threads
 public:
     // This constructor creates a pool of worker threads that can execute small tensor tasks
     // concurrently while the main thread coordinates submission and completion.
-    threads(size_t threads = 0) : stop_thread(false)
+    threads([[maybe_unused]] size_t threads = 0) : stop_thread(false)
     {
         size_t num_threads = std::thread::hardware_concurrency();
 

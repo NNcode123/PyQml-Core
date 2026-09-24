@@ -12,7 +12,7 @@ struct DivNode: public Node {
     DivNode(std::vector<Edge>&& funcs, std::vector<InputMetadata>&& info, const Tensor & a, const Tensor & b): Node(std::move(funcs), std::move(info)), lhs(a), rhs(b) {}
 
 
-    std::vector<Tensor> backward(std::vector<Tensor>&& args){
+    std::vector<Tensor> backward(std::vector<Tensor>&& args) override {
 
     
         Tensor lhs_rw = Tensor::unbroadcast(1/rhs * args[0], info[0].shape);

@@ -6,7 +6,7 @@
 
 namespace {
 
-void build_nested_views(const Tensor &base, std::vector<Tensor> *out)
+[[maybe_unused]] void build_nested_views(const Tensor &base, std::vector<Tensor> *out)
 {
     for (int pass = 0; pass < 8; ++pass)
     {

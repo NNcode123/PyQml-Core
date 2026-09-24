@@ -8,7 +8,12 @@
 class refcount{
     mutable std::atomic<int32_t> ref_count{0};
 
+
+    
+
     public:
+    refcount() = default; 
+    
     void incref() const {
         /*std::cout << "current.count: " << ref_count.load() << std::endl;
         std::cout << "new.count: " << ref_count.load() << std::endl;*/
@@ -28,7 +33,7 @@ class refcount{
         }
     }
 
-    int32_t ref_count() const {
+    int32_t ref_cnt() const {
         return ref_count.load(std::memory_order_acq_rel);
     }
 
@@ -112,14 +117,6 @@ class pyq_intrusive_ptr{
             storage = new T(std::forward<Args>(args) ...);
             retain();
         }
-
-        template <typename... Args>
-
-        pyq_intrusive_ptr<T> make_intrusive(Args&&... args){
-            return pyq_intrusive_ptr(std::forward<Args>(args)...);
-        }
-
-        
 
         explicit operator bool() const noexcept {
          return storage != nullptr;

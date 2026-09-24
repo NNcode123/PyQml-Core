@@ -1,5 +1,4 @@
-#include "../tensor.hpp"
-#include "itr.hpp"
+#include "../../include/tensor.hpp"
 #include "set"
 #include "unordered_map"
 #include <functional>
@@ -92,8 +91,6 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func &&op)
     R *__restrict out_data = out.data_ptr<R>();
     const V *__restrict b_data = b.data();
     const T *__restrict a_data = a.data();
-    const size_t a_size = a.size();
-    const size_t b_size = b.size();
     size_t ind_max = res_dim.size() - 1;
 
     /*
@@ -134,7 +131,7 @@ auto binary_ops(const tensor<T> &a, const tensor<V> &b, Func &&op)
     {
         size_t num_ths = 8;
         size_t chunk = (size_output + num_ths - 1) / num_ths;
-        for (int i = 0; i < num_ths; ++i)
+        for (size_t i = 0; i < num_ths; ++i)
         {
             size_t start = chunk * i;
             size_t end = std::min(size_output, start + chunk);
@@ -454,7 +451,7 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
     size_t a_free_index = 0;
     size_t b_free_index = 0;
 
-    for (int i = 0; i < a_old_dim.size(); i++)
+    for (size_t i = 0; i < a_old_dim.size(); ++i)
     {
         if (!is_contract_a[i])
         {
@@ -475,7 +472,7 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
             inner_size *= cur_itr.dim;
         }
     }
-    for (int i = 0; i < b_old_dim.size(); i++)
+    for (size_t i = 0; i < b_old_dim.size(); ++i)
     {
         if (!is_contract_b[i])
         {
@@ -495,8 +492,6 @@ auto einsum(const tensor<U> &tens_1, const tensor<V> &tens_2, std::vector<int> A
             cur_itr.reset_val = (cur_itr.dim - 1) * cur_itr.advance;
         }
     }
-
-    size_t ind_max = res_dim.size() - 1;
 
     using T = decltype(std::multiplies<>()(std::declval<U>(), std::declval<V>()));
 

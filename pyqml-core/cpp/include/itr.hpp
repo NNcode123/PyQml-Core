@@ -48,7 +48,7 @@ namespace detail
     // This helper advances a vector-based iterator plan and returns the new linear offset for
     // the next element in a sliced tensor traversal.
     inline int64_t getIndex(std::vector<AxisIter> &axis_info,
-                            const std::vector<size_t> &new_dim,
+                            [[maybe_unused]] const std::vector<size_t> &new_dim,
                             size_t start_index, size_t end_index, int64_t cur_pos)
     {
 

@@ -2,11 +2,20 @@
 #include "dtype.hpp"
 #include <memory>
 #include "../cpp/include/tensor.hpp"
+#include "Autograd/Node.hpp"
 
 
+// class grad_meta;
+//clas node;
 
-class Node;
+
 class grad_meta;
+class Node;
+
+
+
+
+
 
 class Tensor
 {
@@ -62,25 +71,32 @@ public:
     template <typename T>
     tensor<T> get_typed_tensor() const
     {
-        tensor<T> tens = tensor<T>::tensor_view(data, shape_, strides_, offset, size);
-        return tens;
+        return tensor<T>::tensor_view(data, shape_, strides_, offset, size);
+        
     }
 
+    Tensor(): data(nullptr) {}
+ 
     // This constructor wraps an existing buffer with a logical tensor shape and dtype so
     // Python-visible tensor objects can reference shared storage without copying the data.
-    Tensor(const StorageRef&   owner, const std::vector<size_t>& dim, DType type) : shape_(dim),
-                                                                                     offset(0), dtype(type), size(calc_size(dim))
+    Tensor(const StorageRef&   owner, const std::vector<size_t>& dim, 
+        DType type, bool requires_grad = false) : shape_(dim),
+                                                 strides_(), size(calc_size(dim)), offset(0), dtype(type)
     {
 
         fill_size_vec(dim, strides_);
         data = owner;
+        if (requires_grad) {
+
+        }
       
     }
 
+
     // This constructor creates a view over an existing buffer with explicit strides and an
     // optional offset, which lets the wrapper represent slices and broadcasted views efficiently.
-    Tensor(const StorageRef& owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, DType type, size_t off = 0) : shape_(dim), offset(off), strides_(stride), dtype(type),
-                                                                                                                                                size(calc_size(dim))
+    Tensor(const StorageRef& owner, const std::vector<size_t> &dim, const std::vector<int64_t> &stride, 
+    DType type, size_t off = 0) : shape_(dim), strides_(stride), size(calc_size(dim)), offset(off), dtype(type)
     {
         data = owner;
     }
@@ -94,61 +110,19 @@ public:
     // This constructor materializes a tensor from a standard vector and shape description,
     // making it straightforward to build native tensors from Python lists or other host data.
     template <typename T>
-    Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type, bool requires_grad = false) : shape_(dim), offset(0), dtype(type), size(calc_size(dim))
+    Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type, 
+        bool requires_grad = false) : shape_(dim), strides_(), size(calc_size(dim)), offset(0), dtype(type)
     {
         data = StorageRef(new T[val.size()], val.size());
         std::copy(val.begin(), val.end(), data.data_ptr<T>());
         fill_size_vec(dim, strides_);
 
-        /*
-        if (requires_grad) {
+        if (requires_grad){
 
-            pyq_intrusive_ptr<AcummulateGradNode>()
-
-            InputMetadata meta{.shape = dim, .type = type };
-            
-            grad_meta g_info = new grad_meta { .grad = nullptr, .requires_grad = true, .is_leaf = true, 
-                .retain_grad = false };
-            info = make_intrusive<grad_meta>(g_info);
         }
-            */
     }
 
-    // Copy constructor: performs deep copy of `info` using make_unique
-    
-    /*
-    Tensor(const Tensor &other)
-        : data(other.data), shape_(other.shape_), strides_(other.strides_), 
-        size(other.size), offset(other.offset), dtype(other.dtype)
-    {
-        if (other.info)
-            info = std::make_unique<grad_meta>(*other.info);
-    }
-    
-
-    // Copy assignment: performs deep copy of `info` using make_unique
-
-    /*
-    Tensor &operator=(const Tensor &other)
-    {
-        if (this == &other)
-            return *this;
-
-        data = other.data;
-        shape_ = other.shape_;
-        strides_ = other.strides_;
-        size = other.size;
-        offset = other.offset;
-        dtype = other.dtype;
-
-        if (other.info)
-            info = std::make_unique<grad_meta>(*other.info);
-        else
-            info.reset();
-
-        return *this;
-    }
-    */
+    Tensor(std::nullptr_t) {}
 
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
     // inputs and then delegating to the core tensor implementation with the appropriate scalar types.
@@ -293,8 +267,6 @@ public:
 
     Tensor& get_grad();
     
-    void backward();
-
     const Tensor& const_get_grad() const;
 
     const pyq_intrusive_ptr<Node>& grad_fn() const;
@@ -305,6 +277,8 @@ public:
 
     void retain_grad();
 
+    pyq_intrusive_ptr<grad_meta>& get_info();
+
 
 
 
@@ -312,6 +286,7 @@ public:
 
     
 };
+
 
 struct grad_meta: public refcount{
 
@@ -325,11 +300,31 @@ struct grad_meta: public refcount{
 
     pyq_intrusive_ptr<Node> node;
 
+    public:
+          grad_meta(Tensor grad_value,
+                bool requires_grad_value,
+                bool is_leaf_value,
+                bool retain_grad_value,
+                const pyq_intrusive_ptr<Node>& node_value)
+            : grad(std::move(grad_value)),
+              requires_grad(requires_grad_value),
+              is_leaf(is_leaf_value),
+              retain_grad(retain_grad_value),
+              node(std::move(node_value))
+          {
+          }
+
+
     protected:
     
     ~grad_meta() = default;
 
 };
+
+
+
+
+
 
 
 #include "dispatch_binary.tpp"
