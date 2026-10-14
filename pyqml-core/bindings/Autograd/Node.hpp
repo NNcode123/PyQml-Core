@@ -46,25 +46,6 @@ struct Node: public refcount
 
     virtual std::vector<Tensor> backward(std::vector<Tensor>&& tensor_input) = 0;
 
-    void release_node_and_neighbors(Node* func){
-
-        if (!func) {return;}
-
-        for (auto& edge: func->edges){
-
-            auto& ptr = edge.node_fn;
-
-            release_node_and_neighbors(ptr.storage_ptr());
-
-            ptr.reset();    
-
-
-
-
-        }
-
-    }
-
     /*
     const std::vector<Edge>& const_next_edge() const;
     std::vector<Edge>& next_edge() const;
@@ -72,25 +53,7 @@ struct Node: public refcount
     std::vector<InputMetadata>& input_metadata_() const;
     */
 
-    ~Node() override {
-
-
-        std::cout << "Destroying node at address" << this << "with ref_count" << strong_ref_cnt(); 
-
-
-        
-        release_node_and_neighbors(this);
-        
-
-        release_resources();
-        
-
-    }
-
-    void release_resources(){
-        
-        info.clear();
-    }
+    ~Node() override = default;
 
     
 
@@ -113,7 +76,6 @@ struct Node: public refcount
 
 
 };
-
 
 
 

@@ -22,14 +22,14 @@ TARGET = ../bindings/tens_test.cpp ../bindings/grad_utils.cpp ../bindings/binary
 
 SOURCES = ../bindings/Tensor.hpp
 
-.PHONY: clean run
+.PHONY: clean run test_exec
 
-test_exec: $(SOURCES)
+test_exec: $(TARGET) $(SOURCES)
 
 	@$(COMPILER) $(CFLAGS) $(OPTFLAG) $(TARGET) -o test_exec 2>&1 | tee errors.txt
 
-run:
+run: test_exec
 	@(./test_exec)
 
 clean:
-	@(rm -rf test_exec)
+	@(rm -f test_exec test_exec.exe)

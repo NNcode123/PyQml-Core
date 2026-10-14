@@ -461,8 +461,8 @@ Tensor loss = (err * err) * Tensor(std::vector<double>{0.5}, std::vector<size_t>
 std::cout << "pred: " << pred.print_val() << "\n";
 std::cout << "loss: " << loss.print_val() << "\n";
 
-std::cout << "DNN forward pass complete; backward is not run in the normal demo "
-             "because the current autograd engine crashes on this graph.\n";
+loss.backward();
+std::cout << "DNN forward and backward passes complete.\n";
 
 //------------------------------------
 // Sum all axes
