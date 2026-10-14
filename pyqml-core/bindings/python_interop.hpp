@@ -1,6 +1,6 @@
-#include "Tensor.hpp"
-#include "bindings.hpp"
-#include "dispatch.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/bindings.hpp>
+#include <pyqml-core/bindings/dispatch.hpp>
 
 
 

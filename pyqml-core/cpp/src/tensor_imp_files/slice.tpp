@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdint>
 #include <numeric>
-#include "../../include/tensor.hpp"
+#include <pyqml-core/cpp/include/tensor.hpp>
 #include <type_traits>
 
 // This method turns a set of indexing descriptors into an internal slice plan and iterator

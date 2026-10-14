@@ -1,4 +1,4 @@
-#include "../../include/tensor.hpp"
+#include <pyqml-core/cpp/include/tensor.hpp>
 #include <type_traits>
 #include <cmath>
 

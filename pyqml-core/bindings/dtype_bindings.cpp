@@ -1,6 +1,6 @@
 #pragma once
-#include "bindings.hpp"
-#include "dtype.hpp"
+#include <pyqml-core/bindings/bindings.hpp>
+#include <pyqml-core/bindings/dtype.hpp>
 
 namespace py = pybind11;
 

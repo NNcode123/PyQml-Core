@@ -1,5 +1,5 @@
-#include "Tensor.hpp"
-#include "dispatch.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/dispatch.hpp>
 
 
 template <typename Prop>

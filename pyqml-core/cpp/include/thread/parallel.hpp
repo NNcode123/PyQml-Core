@@ -1,6 +1,6 @@
 #include <thread>
-#include "../itr.hpp"
-#include "threads.hpp"
+#include <pyqml-core/cpp/include/itr.hpp>
+#include <pyqml-core/cpp/include/thread/threads.hpp>
 
 using namespace detail;
 

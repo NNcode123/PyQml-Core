@@ -2,11 +2,18 @@
 #pragma once
 #include <atomic>
 #include <type_traits>
+#include <cassert>
 #include <stdexcept>
 #include <concepts>
 
 class refcount{
+
+    /*
+    Note the reference counts are mutable to allow modification in const member functions. 
+    */
     mutable std::atomic<int32_t> ref_count{0};
+
+    mutable std::atomic<int32_t> weak_ref_count{0};
 
 
     
@@ -33,8 +40,22 @@ class refcount{
         }
     }
 
-    int32_t ref_cnt() const {
-        return ref_count.load(std::memory_order_acq_rel);
+    void weak_incref() const{
+        weak_ref_count.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    void weak_decref() const{
+        // Weak pointers are guaranteed not to outlive their owning strong pointer, so this never deletes the object.
+        weak_ref_count.fetch_sub(1, std::memory_order_acq_rel);
+
+    }
+
+    int32_t strong_ref_cnt() const {
+        return ref_count.load(std::memory_order_acquire);
+    }
+
+    int32_t weak_ref_cnt() const{
+        return weak_ref_count.load(std::memory_order_acquire);
     }
 
     protected:
@@ -91,6 +112,13 @@ class pyq_intrusive_ptr{
 
     T* storage;
 
+     /*
+    static_assert(
+        std::is_base_of_v<refcount,T>, "Error with class type"
+    );
+    */
+
+
     template <typename U>
     friend class pyq_intrusive_ptr;
 
@@ -119,7 +147,10 @@ class pyq_intrusive_ptr{
         }
 
         explicit operator bool() const noexcept {
+         // std::cout << "intrusive_ptr this = " << this << '\n';
+         // std::cout << "ptr = " << storage << '\n';
          return storage != nullptr;
+
         }   
 
         T* operator->() const{
@@ -168,6 +199,62 @@ class pyq_intrusive_ptr{
 };
 
 
+template <typename T>
+class weak_intrusive_ptr {
+    T* ref_ptr;
+    /*
+    static_assert(
+        std::is_base_of_v<refcount,T>, "Error with class type"
+    );
+    */
+
+    template <typename U>
+    friend class pyq_intrusive_ptr;
+
+    template<typename U>
+    friend class weak_intrusive_ptr;
+
+public:
+    weak_intrusive_ptr() noexcept: ref_ptr(nullptr) {}
+    weak_intrusive_ptr(std::nullptr_t) noexcept: ref_ptr(nullptr) {}
+
+    template <typename U>
+    explicit weak_intrusive_ptr(const pyq_intrusive_ptr<U>& own_ptr): ref_ptr(own_ptr.storage_ptr())
+    {
+        retain();
+    }
+
+    weak_intrusive_ptr(const weak_intrusive_ptr&);
+    weak_intrusive_ptr(weak_intrusive_ptr&&) noexcept;
+    weak_intrusive_ptr& operator=(const weak_intrusive_ptr&) noexcept;
+    weak_intrusive_ptr& operator=(weak_intrusive_ptr&&) noexcept;
+    weak_intrusive_ptr& operator=(const pyq_intrusive_ptr<T>& other) noexcept;
+    ~weak_intrusive_ptr();
+
+    
+    pyq_intrusive_ptr<T> lock() {
+        if (ref_ptr)
+            return pyq_intrusive_ptr<T>(ref_ptr);
+
+        return pyq_intrusive_ptr<T>();
+    }
+
+    void reset() noexcept{
+        if (ref_ptr){
+            ref_ptr->weak_decref();
+        }
+        ref_ptr = nullptr;
+    }
+
+    void retain(){
+        if (ref_ptr){
+            ref_ptr->weak_incref();
+        }
+    }
+
+};
+
+
 class StorageRef{
     
     
@@ -175,7 +262,9 @@ class StorageRef{
 
 
     public:
-        StorageRef() = default;
+        StorageRef(): stg_(nullptr) {}
+
+        StorageRef(std::nullptr_t): stg_(nullptr) {}
 
         StorageRef(pyq_intrusive_ptr<Storage> ptr): stg_(std::move(ptr)) {}
 
@@ -197,6 +286,8 @@ class StorageRef{
         }
 
         operator bool() const noexcept{
+            // std::cout << "StorageRef this = " << this << '\n';
+            // std::cout << "stg_ address = " << &stg_ << '\n';
             return static_cast<bool>(stg_);
         }
 
@@ -208,7 +299,4 @@ class StorageRef{
 
 
 
-#include "intrusive_ptr.tpp"
-
-
-
+#include <pyqml-core/cpp/include/Storage/intrusive_ptr.tpp>

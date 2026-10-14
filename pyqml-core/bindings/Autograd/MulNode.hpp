@@ -1,5 +1,5 @@
-#include "../Tensor.hpp"
-#include "Node.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/Autograd/Node.hpp>
 
 struct MulNode: public Node {
 

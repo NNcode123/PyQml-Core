@@ -28,10 +28,11 @@ set(CMAKE_PREFIX_PATH
 find_package(pybind11 REQUIRED)
 
 set(PYQML_CORE_DIR ${PROJECT_SOURCE_DIR}/..)
+set(PYQML_CORE_ROOT ${PYQML_CORE_DIR}/..)
 set(BINDINGS_DIR ${PYQML_CORE_DIR}/bindings)
 set(CPP_DIR ${PYQML_CORE_DIR}/cpp)
 
-include_directories(${CPP_DIR})
+include_directories(${PYQML_CORE_ROOT})
 
 # ---------------- TEST ----------------
 add_executable(test ${CPP_DIR}/src/test.cpp)
@@ -48,6 +49,7 @@ pybind11_add_module(pyqmlcore
     ${BINDINGS_DIR}/tensor_init.cpp
     ${BINDINGS_DIR}/binary_ops.cpp
     ${BINDINGS_DIR}/unary_ops.cpp
+    ${BINDINGS_DIR}/Autograd/grad_helper.cpp
     ${BINDINGS_DIR}/dtype_bindings.cpp
     ${BINDINGS_DIR}/grad_utils.cpp
 )

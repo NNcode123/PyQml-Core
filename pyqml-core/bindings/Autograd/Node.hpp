@@ -3,8 +3,8 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
-#include "Edge.hpp"
-#include "../dtype.hpp"
+#include <pyqml-core/bindings/Autograd/Edge.hpp>
+#include <pyqml-core/bindings/dtype.hpp>
 #include <unordered_set>
 #include <queue>
 
@@ -75,6 +75,9 @@ struct Node: public refcount
     ~Node() override {
 
 
+        std::cout << "Destroying node at address" << this << "with ref_count" << strong_ref_cnt(); 
+
+
         
         release_node_and_neighbors(this);
         
@@ -98,13 +101,11 @@ struct Node: public refcount
 
     std::vector<InputMetadata> info;
 
-    // std::vector<Hook> pre_hooks;
+    
 
-    // std::vector<Hook> post_hooks;
+    //std::vector<std::unique_ptr<FunctionPostHook>> post_hooks;
 
-    //std::vector<std::unique_ptr<FunctionPostHooks>> post_hooks;
-
-    //std::vector<std::unique_ptr<FunctionPreHooks>> pre_hooks; 
+    //std::vector<std::unique_ptr<FunctionPreHook>> pre_hooks; 
 
     
 
@@ -112,8 +113,6 @@ struct Node: public refcount
 
 
 };
-
-
 
 
 

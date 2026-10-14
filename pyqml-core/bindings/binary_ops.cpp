@@ -1,5 +1,5 @@
-#include "Tensor.hpp"
-#include "Autograd/attach_grad_binary.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/Autograd/attach_grad_binary.hpp>
 
 Tensor Tensor::astype(DType new_type, [[maybe_unused]] bool h) const
 {
@@ -13,8 +13,15 @@ Tensor Tensor::astype(DType new_type, [[maybe_unused]] bool h) const
 
 Tensor Tensor::operator+(const Tensor &other) const
 {
-    return bin_op(*this, other, [&](auto &t_1, auto &t_2)
-                  { return binary_ops(t_1, t_2, std::plus<>()); });
+    auto result = bin_op(*this, other, [&](auto &t_1, auto &t_2)
+                         { return binary_ops(t_1, t_2, std::plus<>()); });
+
+    if (requires_grad() || other.requires_grad())
+    {
+        Attach_Grad(result, Add, (*this), other)
+    }
+
+    return result;
 }
 
 Tensor Tensor::operator-(const Tensor &other) const
@@ -35,14 +42,34 @@ Tensor Tensor::operator-(const Tensor &other) const
 
 Tensor Tensor::operator*(const Tensor &other) const
 {
-    BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                       { return binary_ops(t_1, t_2, std::multiplies<>()); });
+    auto result = [&]()
+    {
+        BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
+                           { return binary_ops(t_1, t_2, std::multiplies<>()); });
+    }();
+
+    if (requires_grad() || other.requires_grad())
+    {
+        Attach_Grad(result, Mul, (*this), other)
+    }
+
+    return result;
 }
 
 Tensor Tensor::operator/(const Tensor &other) const
 {
-    BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
-                       { return binary_ops(t_1, t_2, std::divides<>()); });
+    auto result = [&]()
+    {
+        BINARY_OP_DISPATCH((*this), other, [&](auto &t_1, auto &t_2)
+                           { return binary_ops(t_1, t_2, std::divides<>()); });
+    }();
+
+    if (requires_grad() || other.requires_grad())
+    {
+        Attach_Grad(result, Div, (*this), other)
+    }
+
+    return result;
 }
 
 Tensor &Tensor::operator+=(const Tensor &other)

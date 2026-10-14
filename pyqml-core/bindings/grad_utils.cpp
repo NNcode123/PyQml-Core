@@ -1,18 +1,17 @@
-#include "Tensor.hpp"
-#include "Autograd/Engine.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/Autograd/Engine.hpp>
 
 
 Tensor& Tensor::get_grad() {
-    
-    return info->grad;
+    return get_info()->grad;
 }
 
 const Tensor& Tensor::const_get_grad() const {
     return info->grad;
 }
 
-const pyq_intrusive_ptr<Node>& Tensor::grad_fn() const {
-    return info->node;
+pyq_intrusive_ptr<Node> Tensor::grad_fn() const {
+    return info ? info->node : pyq_intrusive_ptr<Node>{};
 }
 
 bool Tensor::is_leaf() const {
@@ -41,5 +40,13 @@ void Tensor::backward() const {
 
 }
 
+pyq_intrusive_ptr<grad_meta>& Tensor::get_info() {
+    return info;
+}
 
 
+/*
+void Tensor::set_info(pyq_intrusive_ptr<grad_meta> new_info) noexcept {
+    info = std::move(new_info);
+}
+*/

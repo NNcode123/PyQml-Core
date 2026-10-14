@@ -1,4 +1,4 @@
-#include "tensor.hpp"
+#include <pyqml-core/cpp/include/tensor.hpp>
 #include <iostream>
 #include <vector>
 #include <complex.h>

@@ -8,7 +8,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/numpy.h>
-#include "dtype.hpp"
+#include <pyqml-core/bindings/dtype.hpp>
 
 namespace py = pybind11;
 

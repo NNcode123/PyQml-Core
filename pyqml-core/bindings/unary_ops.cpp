@@ -1,4 +1,5 @@
-#include "Tensor.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/Autograd/SumNode.hpp>
 
 std::string Tensor::print_val()
 {
@@ -20,8 +21,20 @@ Tensor Tensor::min(const std::vector<int> &axis) const
 
 Tensor Tensor::sum(const std::vector<int> &axis, bool keepdim) const
 {
-    return getTens([&](auto &t)
-                   { return t.sum(axis, keepdim); });
+    Tensor result = getTens([&](auto &t)
+                            { return t.sum(axis, keepdim); });
+
+    if (requires_grad())
+    {
+        std::vector<Edge> edges{{grad_fn(), 0}};
+        std::vector<InputMetadata> metadata{
+            InputMetadata{.shape = shape_, .type = dtype}};
+        auto node = make_intrusive<SumNode>(std::move(edges), std::move(metadata));
+        result.info = pyq_intrusive_ptr<grad_meta>(
+            new grad_meta{Tensor(), true, false, false, node});
+    }
+
+    return result;
 }
 
 Tensor Tensor::ones(const std::vector<size_t> &shape, DType type)
@@ -43,6 +56,12 @@ Tensor Tensor::reshape(const std::vector<size_t> &shape)
 Tensor Tensor::unbroadcast(const Tensor &in, const std::vector<size_t> &shape)
 {
     const auto &original_shape = in.shape_;
+    
+    if (original_shape == shape)
+    {
+        return in;
+    }
+
     std::vector<int> broadcast_axes;
 
     for (size_t axis = 0; axis < original_shape.size(); ++axis)

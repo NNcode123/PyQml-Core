@@ -42,7 +42,7 @@ public:
                         return;
 
                     auto tens_job = std::move(task.front());
-                    task.pop();
+                    task.pop(); 
 
                     lock.unlock();
 
@@ -95,7 +95,9 @@ public:
     ~threads()
     {
         std::unique_lock<std::mutex> lock(mut);
+
         stop_thread = true;
+
         lock.unlock();
 
         cond.notify_all();

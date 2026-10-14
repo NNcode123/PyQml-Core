@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include "intrusive_ptr.hpp"
+#include <pyqml-core/cpp/include/Storage/intrusive_ptr.hpp>
 #include <thread>
 #include <cassert>
 #include <iostream>
@@ -166,6 +166,47 @@ void copy_after_move_stress()
     assert(storage_destroy_count == 5);
 }
 
+void weak_intrusive_ptr_lifetime_test()
+{
+    std::cout << "\n=== Weak Intrusive Pointer Lifetime Test ===\n";
+
+    const int destroy_count_before = storage_destroy_count;
+    {
+        auto strong = make_intrusive<TestStorage, int>(new int[4], 4);
+        assert(strong->strong_ref_cnt() == 1);
+
+        {
+            weak_intrusive_ptr<TestStorage> weak(strong);
+            assert(strong->weak_ref_cnt() == 1);
+
+            weak_intrusive_ptr<TestStorage> copied(weak);
+            assert(strong->weak_ref_cnt() == 2);
+
+            weak_intrusive_ptr<TestStorage> assigned;
+            assigned = weak;
+            assert(strong->weak_ref_cnt() == 3);
+
+            weak_intrusive_ptr<TestStorage> moved(std::move(copied));
+            assert(strong->weak_ref_cnt() == 3);
+
+            assigned = std::move(moved);
+            assert(strong->weak_ref_cnt() == 2);
+
+            {
+                auto locked = weak.lock();
+                assert(locked.storage_ptr() == strong.storage_ptr());
+                assert(strong->strong_ref_cnt() == 2);
+            }
+            assert(strong->strong_ref_cnt() == 1);
+        }
+
+        assert(strong->weak_ref_cnt() == 0);
+        assert(strong->strong_ref_cnt() == 1);
+    }
+
+    assert(storage_destroy_count == destroy_count_before + 1);
+}
+
 int main()
 {
     std::cout << "Creating Storage...\n";
@@ -297,6 +338,7 @@ int main()
     self_assignment_stress();
 
     copy_after_move_stress();
+    weak_intrusive_ptr_lifetime_test();
 
 
     std::cout 
@@ -307,7 +349,6 @@ int main()
         << storage_destroy_count
         << "\n";
 }
-
 
 
 

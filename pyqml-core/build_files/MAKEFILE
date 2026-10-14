@@ -1,6 +1,6 @@
 COMPILER = g++
 
-CFLAGS = -std=c++20 -Wall -Wextra -Werror -I../bindings -I../cpp/include
+CFLAGS = -std=c++20 -Wall -Wextra -Werror -I../../
 
 OPTIMMODE ?= O0
 
@@ -18,7 +18,7 @@ $(error "Invalid Optimization Flag. Please use O0, O1, or O2")
 
 endif
 
-TARGET = ../bindings/tens_test.cpp ../bindings/grad_utils.cpp ../bindings/binary_ops.cpp ../bindings/unary_ops.cpp
+TARGET = ../bindings/tens_test.cpp ../bindings/grad_utils.cpp ../bindings/binary_ops.cpp ../bindings/unary_ops.cpp ../bindings/Autograd/grad_helper.cpp
 
 SOURCES = ../bindings/Tensor.hpp
 
@@ -29,7 +29,7 @@ test_exec: $(SOURCES)
 	@$(COMPILER) $(CFLAGS) $(OPTFLAG) $(TARGET) -o test_exec 2>&1 | tee errors.txt
 
 run:
-	./test_exec
+	@(./test_exec)
 
 clean:
 	@(rm -rf test_exec)

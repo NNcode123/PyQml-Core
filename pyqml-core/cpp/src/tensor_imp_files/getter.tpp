@@ -1,4 +1,4 @@
-#include "../../include/tensor.hpp"
+#include <pyqml-core/cpp/include/tensor.hpp>
 
 // This helper renders a tensor recursively to an output stream so the contents can be
 // inspected in a readable nested form that mirrors the tensor's logical shape.

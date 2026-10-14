@@ -1,5 +1,5 @@
 
-#include "bindings.hpp"
+#include <pyqml-core/bindings/bindings.hpp>
 
 namespace py = pybind11;
 

@@ -1,8 +1,8 @@
 
 #pragma once
-#include "Tensor.hpp"
-#include "python_interop.hpp"
-#include "PyType.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/python_interop.hpp>
+#include <pyqml-core/bindings/PyType.hpp>
 
 // This helper registers the Tensor class and the high-level tensor operations with
 // the Python module so that native objects can be constructed and manipulated from Python.

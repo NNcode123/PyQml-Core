@@ -1,5 +1,5 @@
-#include "Node.hpp"
-#include "../Tensor.hpp"
+#include <pyqml-core/bindings/Autograd/Node.hpp>
+#include <pyqml-core/bindings/Tensor.hpp>
 
 struct SubNode: Node {
    

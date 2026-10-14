@@ -1,6 +1,6 @@
 #pragma once
-#include "bindings.hpp"
-#include "../cpp/src/tensor.hpp"
+#include <pyqml-core/bindings/bindings.hpp>
+#include <pyqml-core/bindings/Tensor.hpp>
 
 // This helper infers a native DType from a Python dtype object by matching it against
 // the supported scalar types and returning the corresponding enum value.

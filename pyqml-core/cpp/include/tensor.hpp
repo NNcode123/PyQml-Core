@@ -9,9 +9,9 @@
 #include <variant>
 #include <cstring>
 #include <memory>
-#include "thread/parallel.hpp"
-#include "Storage/intrusive_ptr.hpp"
-#include "tensor_metadata_util.hpp"
+#include <pyqml-core/cpp/include/thread/parallel.hpp>
+#include <pyqml-core/cpp/include/Storage/intrusive_ptr.hpp>
+#include <pyqml-core/cpp/include/tensor_metadata_util.hpp>
 using namespace detail;
 using namespace parallel_sync;
 
@@ -215,8 +215,8 @@ public:
     }
 };
 
-#include "../src/tensor_imp_files/slice.tpp"
-#include "../src/tensor_imp_files/binary_op.tpp"
-#include "../src/tensor_imp_files/unary_op.tpp"
-#include "../src/tensor_imp_files/getter.tpp"
+#include <pyqml-core/cpp/src/tensor_imp_files/slice.tpp>
+#include <pyqml-core/cpp/src/tensor_imp_files/binary_op.tpp>
+#include <pyqml-core/cpp/src/tensor_imp_files/unary_op.tpp>
+#include <pyqml-core/cpp/src/tensor_imp_files/getter.tpp>
 #pragma message("getter.tpp included successfully")

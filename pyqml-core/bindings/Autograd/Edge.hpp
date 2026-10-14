@@ -1,4 +1,4 @@
-#include "../../cpp/include/Storage/intrusive_ptr.hpp"
+#include <pyqml-core/cpp/include/Storage/intrusive_ptr.hpp>
 
 class Node;
 

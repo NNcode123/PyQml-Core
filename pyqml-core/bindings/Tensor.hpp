@@ -1,8 +1,9 @@
 #pragma once
-#include "dtype.hpp"
+#include <pyqml-core/bindings/dtype.hpp>
 #include <memory>
-#include "../cpp/include/tensor.hpp"
-#include "Autograd/Node.hpp"
+#include <pyqml-core/cpp/include/tensor.hpp>
+#include <pyqml-core/bindings/Autograd/Node.hpp>
+#include <pyqml-core/bindings/Autograd/grad_helper.hpp>
 
 
 // class grad_meta;
@@ -76,6 +77,9 @@ public:
     }
 
     Tensor(): data(nullptr) {}
+
+    Tensor(std::nullptr_t): data(nullptr) {}
+
  
     // This constructor wraps an existing buffer with a logical tensor shape and dtype so
     // Python-visible tensor objects can reference shared storage without copying the data.
@@ -87,7 +91,8 @@ public:
         fill_size_vec(dim, strides_);
         data = owner;
         if (requires_grad) {
-
+           
+            grad_helper::attach_grad(*this);
         }
       
     }
@@ -113,16 +118,18 @@ public:
     Tensor(const std::vector<T> &val, const std::vector<size_t> &dim, DType type, 
         bool requires_grad = false) : shape_(dim), strides_(), size(calc_size(dim)), offset(0), dtype(type)
     {
-        data = StorageRef(new T[val.size()], val.size());
+        T* raw = new T[val.size()];
+        data = StorageRef(raw, val.size());
         std::copy(val.begin(), val.end(), data.data_ptr<T>());
         fill_size_vec(dim, strides_);
 
-        if (requires_grad){
 
+
+        if (requires_grad){
+            grad_helper::attach_grad(*this);
         }
     }
 
-    Tensor(std::nullptr_t) {}
 
     // This helper dispatches elementwise operations by matching the runtime dtypes of both
     // inputs and then delegating to the core tensor implementation with the appropriate scalar types.
@@ -269,7 +276,7 @@ public:
     
     const Tensor& const_get_grad() const;
 
-    const pyq_intrusive_ptr<Node>& grad_fn() const;
+    pyq_intrusive_ptr<Node> grad_fn() const;
 
     bool is_leaf() const;
 
@@ -327,5 +334,5 @@ struct grad_meta: public refcount{
 
 
 
-#include "dispatch_binary.tpp"
-#include "dispatch_unary.tpp"
+#include <pyqml-core/bindings/dispatch_binary.tpp>
+#include <pyqml-core/bindings/dispatch_unary.tpp>

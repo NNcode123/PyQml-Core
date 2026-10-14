@@ -1,6 +1,6 @@
-#include "../../include/tensor.hpp"
-#include "set"
-#include "unordered_map"
+#include <pyqml-core/cpp/include/tensor.hpp>
+#include <set>
+#include <unordered_map>
 #include <functional>
 
 using namespace detail;

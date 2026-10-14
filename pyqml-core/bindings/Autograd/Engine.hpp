@@ -1,5 +1,5 @@
-#include "../Tensor.hpp"
-#include "Node.hpp"
+#include <pyqml-core/bindings/Tensor.hpp>
+#include <pyqml-core/bindings/Autograd/Node.hpp>
 
 struct Engine {
 
@@ -88,20 +88,27 @@ struct Engine {
             }
             */
             
+            std::cout << "buffer_cur size is: " << buffer[cur].size() << "\n";
 
             auto grads = cur->backward(std::move(buffer[cur]));
 
             for (size_t i = 0; i < parents.size(); ++i ){
                 auto edge = parents[i];
                 
-                auto Node = edge.node_fn.storage_ptr();
+                auto node = edge.node_fn.storage_ptr();
+
+                if (buffer.find(node) == buffer.end()){
+                    buffer[node] = std::vector<Tensor>(node->info.size());
+                }
                 
-                auto& parent_grads = buffer[Node];
+                auto& parent_grads = buffer[node];
+
+                std::cout << "Accumulating gradient from child " << i << " back to the parent, where child is the " << edge.input_nr +1 << " child of parent " << "\n";
                 
                 parent_grads[edge.input_nr] += grads[i];
                 
-                if (--dependencies[Node] == 0) {
-                    tasks.push(Node);
+                if (--dependencies[node] == 0 ) {
+                    tasks.push(node);
                 }
 
 
@@ -115,4 +122,3 @@ struct Engine {
     }
     
 };
-
